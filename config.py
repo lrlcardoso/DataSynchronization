@@ -9,10 +9,15 @@ Version:        1.0
 ==============================================================================
 """
 
+ROOT_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data"
+SELECTED_PATIENTS = ["P01"]
+SELECTED_SESSIONS = ["Session2"]
+TARGET_SUBFOLDERS = ["FMA_and_VR", "VR", "CT"]
+
 # --- File Paths ---
 SEGMENTATION_FILE = "data/segments.txt"
-IMU_DATA_DIR = "data/imu/"
-VIDEO_MARKER_DIR = "data/video_markers/"
+IMU_DATA_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data\Processed\P01\Session2_20250210\WMORE"
+VIDEO_MARKER_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data\Processed\P01\Session2_20250210\Video\VR"
 OUTPUT_DIR = "results/"
 
 # --- Processing Parameters ---
