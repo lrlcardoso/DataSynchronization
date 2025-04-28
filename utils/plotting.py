@@ -36,9 +36,41 @@ def plot_similarity_vs_lag(similarity_curve, fs, lag_range, label, output_dir, s
     plt.show()
 
 
-def plot_aligned_signals(sig1, sig2, lag_samples, fs, seg, output_dir, save=False):
+def plot_aligned_signals(imu_norm, video_norm, lag_samples, fs, label, output_dir, save=False):
     """
-    Overlays IMU and video marker signals after lag alignment.
+    Plot IMU and video normalized signals with the optimal lag applied to video.
+    
+    Parameters:
+        imu_norm (pd.DataFrame): IMU signal with 'Unix Time' and 'Magnitude'.
+        video_norm (pd.DataFrame): Video signal with 'Unix Time' and 'Magnitude'.
+        lag_samples (int): Number of samples to shift video signal.
+        fs (float): Sampling frequency (Hz).
+        label (str): Identifier for filename and title.
+        output_dir (str): Directory to save plots.
+        save (bool): If True, saves plot to output_dir.
     """
-    # TODO: Implement plotting with matplotlib
-    pass
+    # Shift video signal by lag_samples
+    shifted_video = video_norm.copy()
+    shifted_video['Magnitude'] = shifted_video['Magnitude'].shift(lag_samples, fill_value=np.nan)
+    
+    # Use a relative time axis (segment time)
+    imu_time = imu_norm['Unix Time'] - imu_norm['Unix Time'].iloc[0]
+    video_time = shifted_video['Unix Time'] - shifted_video['Unix Time'].iloc[0]
+    
+    plt.figure(figsize=(12, 5))
+    plt.plot(imu_time, imu_norm['Magnitude'], label="IMU", alpha=0.8)
+    plt.plot(video_time, shifted_video['Magnitude'], label=f"Video (shifted by {lag_samples/fs:.3f} s)", alpha=0.8)
+    plt.xlabel("Segment Time (s)")
+    plt.ylabel("Normalized Magnitude")
+    plt.title(f"Aligned Signals - {label}")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    
+    if save:
+        os.makedirs(output_dir, exist_ok=True)
+        out_path = os.path.join(output_dir, f"{label}_aligned_signals.png")
+        plt.savefig(out_path)
+        plt.close()
+    else:
+        plt.show()

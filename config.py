@@ -23,19 +23,19 @@ OUTPUT_DIR = "results/"
 # --- Processing Parameters ---
 IMU_FREQ = 100           # Hz
 VIDEO_FREQ = 30          # Hz
-COMMON_FREQ = 100        # Hz (target frequency for resampling)
-TIME_MARGIN = 1.0        # seconds before/after each segment
+COMMON_FREQ = 30        # Hz (target frequency for resampling)
+TIME_MARGIN = 0.0        # seconds before/after each segment
 
 # --- Normalization ---
 NORM_METHOD = "zscore"   # 'zscore' or 'minmax'
 
 # --- Correlation ---
-LAG_RANGE = 1.5          # seconds, search +/- this window
+LAG_RANGE = 5          # seconds, search +/- this window
 
 # --- Plotting ---
 PLOT_FORMAT = "png"
 SHOW_PLOTS = True
-SAVE_PLOTS = True
+SAVE_PLOTS = False
 
 # --- CSV Output ---
 SAVE_CSV = True

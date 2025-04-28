@@ -15,10 +15,10 @@ import pandas as pd
 from config import *
 import matplotlib.pyplot as plt
 from utils.file_io import load_imu_data, load_video_marker_data, determine_wrist_side
-from utils.signal_processing import resample_signal, compute_magnitude, highpass_filter, normalize_signal, compute_cross_correlation
+from utils.signal_processing import resample_signal, compute_magnitude, highpass_filter, normalize_signal, lowpass_filter, position_to_acceleration, compute_cross_correlation
 from utils.plotting import plot_similarity_vs_lag, plot_aligned_signals
 from utils.data_merge import merge_and_save_csv
-from config import IMU_DATA_DIR, VIDEO_MARKER_DIR, IMU_FREQ, VIDEO_FREQ, COMMON_FREQ
+from config import IMU_DATA_DIR, LAG_RANGE, VIDEO_MARKER_DIR, IMU_FREQ, VIDEO_FREQ, COMMON_FREQ
 
 def plot_normalized_signals(imu_norm, video_norm, label_imu='IMU', label_video='Video'):
     """
@@ -98,32 +98,56 @@ def main():
         
         # Load IMU and video marker data for interval
         imu_data = load_imu_data(IMU_DATA_DIR, wrist_side, seg_interval)
-        video_data = df[['Unix Time', '10_x', '10_y']] #load_video_marker_data(VIDEO_MARKER_DIR, camera_label, seg_interval)
+        imu_data['ax'] = -imu_data['ax']
+        video_data = df[['Unix Time', '10_x', '10_y']].copy() #load_video_marker_data(VIDEO_MARKER_DIR, camera_label, seg_interval)
+        video_data['10_y'] = -video_data['10_y'] 
 
-        # Magnitude
+
+        # High-pass filter each IMU axis
+        imu_data['ax'] = highpass_filter(imu_data['ax'], freq=100, cutoff=0.5)
+        imu_data['ay'] = highpass_filter(imu_data['ay'], freq=100, cutoff=0.5)
+        imu_data['az'] = highpass_filter(imu_data['az'], freq=100, cutoff=0.5)
+        # Low-pass filter each IMU axis
+        imu_data['ax'] = lowpass_filter(imu_data['ax'], freq=100, cutoff=1.0)
+        imu_data['ay'] = lowpass_filter(imu_data['ay'], freq=100, cutoff=1.0)
+        imu_data['az'] = lowpass_filter(imu_data['az'], freq=100, cutoff=1.0)
+        # Compute magnitude
         imu_mag = compute_magnitude(imu_data)
-        video_mag = compute_magnitude(video_data)
-        
+
+        # High-pass filter each video axis
+        video_data['10_x'] = highpass_filter(video_data['10_x'], freq=30, cutoff=0.5)
+        video_data['10_y'] = highpass_filter(video_data['10_y'], freq=30, cutoff=0.5)
+        # Low-pass filter each video axis
+        video_data['10_x'] = lowpass_filter(video_data['10_x'], freq=30, cutoff=1.0)
+        video_data['10_y'] = lowpass_filter(video_data['10_y'], freq=30, cutoff=1.0)
+        # Compute magnitude
+        video_mag = position_to_acceleration(video_data)
+
+        # # Remove the gravity component from the imu data
+        # imu_mag_hp = highpass_filter(imu_mag, freq=100, cutoff=0.2)
+        # video_mag_hp = highpass_filter(video_mag, freq=30, cutoff=0.2)
+
+        # imu_mag_lp = lowpass_filter(imu_mag_hp, freq=100, cutoff=1.0)
+        # video_mag_lp = lowpass_filter(video_mag_hp, freq=30, cutoff=1.0)
+
         # Resample
-        imu_rs = resample_signal(imu_mag, COMMON_FREQ)
-        video_rs = resample_signal(video_mag, COMMON_FREQ)
+        imu_rs = resample_signal(imu_mag, 30)
+        # video_rs = resample_signal(video_mag, COMMON_FREQ)
 
-        # Remove the gravity component from the imu data
-        imu_mag_filtered = highpass_filter(imu_rs, freq=COMMON_FREQ)
-        video_mag_filtered = highpass_filter(video_rs, freq=COMMON_FREQ)
+        window_size = 15
+        imu_smooth = smooth_signal(imu_rs, window=window_size)
+        video_smooth = smooth_signal(video_mag, window=window_size)
 
-        window_size = 50  # Choose a window (e.g., 5–21 depending on your signal)
-        imu_smooth = smooth_signal(imu_mag_filtered, window=window_size)
-
-        # window_size = 500
-        # video_smooth = smooth_signal(video_rs, window=window_size)
+        imu_smooth = imu_smooth.dropna()
+        video_smooth = video_smooth.dropna()
         
         # Normalize
         NORM_METHOD = "zscore"
         imu_norm = normalize_signal(imu_smooth, NORM_METHOD)
-        video_norm = normalize_signal(video_mag_filtered, NORM_METHOD)
+        video_norm = normalize_signal(video_smooth, NORM_METHOD)
 
-        plot_normalized_signals(imu_norm, video_norm)
+        # plot_normalized_signals(imu_norm, video_norm)
+        # plot_normalized_signals(imu_norm, video_norm.assign(Magnitude=-video_norm['Magnitude']))
 
 #         imu_center = extract_central_window(imu_norm, window_sec=2.0)
 #         video_center = extract_central_window(video_norm, window_sec=2.0)
@@ -133,16 +157,17 @@ def main():
 #             imu_center, video_center, COMMON_FREQ, LAG_RANGE
 # )
         
-#         # # Cross-correlate
-#         # lag_samples, max_corr, similarity_curve = compute_cross_correlation(
-#         #     imu_norm, video_norm, COMMON_FREQ, LAG_RANGE
-#         # )
-#         print(f"  Optimal lag (s): {lag_samples/COMMON_FREQ:.3f}, Correlation: {max_corr:.3f}")
+        # Cross-correlate
+        lag_samples, max_corr, similarity_curve = compute_cross_correlation(
+            imu_norm, video_norm, 30, LAG_RANGE
+        )
+        print(f"  Optimal lag (s): {lag_samples/30:.3f}, Correlation: {max_corr:.3f}")
         
-#         # Plots
-#         if SHOW_PLOTS or SAVE_PLOTS:
-#             plot_similarity_vs_lag(similarity_curve, COMMON_FREQ, LAG_RANGE, camera_label, OUTPUT_DIR, save=False)
-#             # plot_aligned_signals(imu_norm, video_norm, lag_samples, COMMON_FREQ, camera_label, OUTPUT_DIR, save=SAVE_PLOTS)
+        # Plots
+        if SHOW_PLOTS or SAVE_PLOTS:
+            plot_similarity_vs_lag(similarity_curve, 30, LAG_RANGE, camera_label, OUTPUT_DIR, save=False)
+            plot_aligned_signals(imu_norm, video_norm, lag_samples, COMMON_FREQ, camera_label, OUTPUT_DIR, save=SAVE_PLOTS)
+
         
         # # Merge and save CSV
         # if SAVE_CSV:

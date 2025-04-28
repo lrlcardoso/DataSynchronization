@@ -39,6 +39,36 @@ def resample_signal(signal, target_freq, time_col='Unix Time'):
     resampled_df = pd.DataFrame(resampled)
     return resampled_df
 
+def position_to_acceleration(df, time_col='Unix Time', x_col='10_x', y_col='10_y', acc_col='Magnitude'):
+    """
+    Given a DataFrame with time and x/y position, compute acceleration magnitude.
+    
+    Parameters:
+        df (pd.DataFrame): Must include time_col, x_col, y_col.
+        time_col (str): Time column.
+        x_col (str): X position column.
+        y_col (str): Y position column.
+        acc_col (str): Output acceleration magnitude column name.
+        
+    Returns:
+        pd.DataFrame: [time_col, acc_col]
+    """
+    t = df[time_col].values
+    x = df[x_col].values
+    y = df[y_col].values
+
+    # First derivative: velocity
+    vx = np.gradient(x, t)
+    vy = np.gradient(y, t)
+
+    # Second derivative: acceleration
+    ax = np.gradient(vx, t)
+    ay = np.gradient(vy, t)
+
+    acc_mag = np.sqrt(ax**2 + ay**2)
+    out = pd.DataFrame({time_col: t, acc_col: acc_mag})
+    return out
+
 def compute_magnitude(df, time_col='Unix Time', mag_col='Magnitude'):
     """
     Compute vector magnitude using all columns except the time column.
@@ -56,7 +86,7 @@ def compute_magnitude(df, time_col='Unix Time', mag_col='Magnitude'):
     out = pd.DataFrame({time_col: df[time_col], mag_col: magnitude})
     return out
 
-def highpass_filter(df, freq, cutoff=0.1, order=2, mag_col='Magnitude'):
+def highpass_filter(series, freq, cutoff=0.1, order=2):
     """
     Apply a Butterworth high-pass filter to the magnitude column of the DataFrame.
 
@@ -73,11 +103,26 @@ def highpass_filter(df, freq, cutoff=0.1, order=2, mag_col='Magnitude'):
     nyq = 0.5 * freq
     normal_cutoff = cutoff / nyq
     b, a = butter(order, normal_cutoff, btype='high', analog=False)
-    # Use filtfilt for zero-phase filtering (no lag)
-    filtered = filtfilt(b, a, df[mag_col].values)
-    out = df.copy()
-    out[mag_col] = filtered
-    return out
+    return filtfilt(b, a, series.values)
+
+def lowpass_filter(series, freq, cutoff=10.0, order=2):
+    """
+    Apply a Butterworth low-pass filter to the magnitude column of the DataFrame.
+
+    Parameters:
+        df (pd.DataFrame): Input DataFrame (must contain mag_col).
+        freq (float): Sampling frequency (Hz).
+        cutoff (float): Cutoff frequency for low-pass filter (Hz).
+        order (int): Filter order.
+        mag_col (str): Name of the magnitude column to filter.
+
+    Returns:
+        pd.DataFrame: Copy of df with filtered mag_col.
+    """
+    nyq = 0.5 * freq
+    normal_cutoff = cutoff / nyq
+    b, a = butter(order, normal_cutoff, btype='low', analog=False)
+    return filtfilt(b, a, series.values)
 
 def normalize_signal(df, method="zscore", mag_col="Magnitude"):
     """
