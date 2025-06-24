@@ -12,8 +12,10 @@ Version:        1.1
 
 import os
 import pandas as pd
+import numpy as np
 from config import *
 import matplotlib.pyplot as plt
+from scipy.stats import zscore
 from utils.file_io import load_imu_data, load_video_marker_data, determine_wrist_side
 from utils.signal_processing import resample_signal, compute_magnitude, highpass_filter, normalize_signal, lowpass_filter, position_to_acceleration, compute_cross_correlation
 from utils.plotting import plot_similarity_vs_lag, plot_aligned_signals
@@ -70,7 +72,7 @@ def smooth_signal(df, window=5, mag_col="Magnitude"):
     return out
 
 def main():
-    input_root = r"C:\Users\s4659771\Documents\MyTurn_Project\Data\Processed\P01\Session2_20250210\Video\VR\Camera1\Segments"  
+    input_root = r"C:\Users\s4659771\Documents\MyTurn_Project\Data\Processed\P08\Session1_20250304\Video\CT\Camera1\Segments"  
     segment_folders = [os.path.join(input_root, d) for d in os.listdir(input_root) if os.path.isdir(os.path.join(input_root, d))]
     
     for seg_path in segment_folders:
@@ -87,20 +89,78 @@ def main():
             continue
         
         # Get UNIX start and end from first/last row
-        seg_start = df.iloc[0]['Unix Time']   # Adjust column name as needed
+        seg_start = df.iloc[0]['Unix Time']
         seg_end = df.iloc[-1]['Unix Time']
         seg_interval = (seg_start - TIME_MARGIN, seg_end + TIME_MARGIN)
         
         # Determine camera/wrist side from folder or file name
         camera_label = os.path.basename(os.path.dirname(os.path.dirname(seg_path)))
         # wrist_side = determine_wrist_side(camera_label)
-        wrist_side = "LH" # this is temporary until I develop the determine_wrist_side method
+        wrist_side = "RH" # this is temporary until I develop the determine_wrist_side method
         
         # Load IMU and video marker data for interval
         imu_data = load_imu_data(IMU_DATA_DIR, wrist_side, seg_interval)
         imu_data['ax'] = -imu_data['ax']
-        video_data = df[['Unix Time', '10_x', '10_y']].copy() #load_video_marker_data(VIDEO_MARKER_DIR, camera_label, seg_interval)
-        video_data['10_y'] = -video_data['10_y'] 
+        video_data = df[['Unix Time', '11_x', '11_y']].copy() #load_video_marker_data(VIDEO_MARKER_DIR, camera_label, seg_interval)
+        video_data['11_y'] = -video_data['11_y'] 
+
+        # # Compute z-scores on a copy to avoid chained assignment issues
+        # z_scores = zscore(video_data['10_x'].values)
+
+        # # Parameters
+        # z_thresh = 5.0
+        # window = 5
+
+        # # Initialize boolean mask (True = keep)
+        # valid_mask = np.full(len(z_scores), False)
+
+        # # Identify valid windows
+        # for i in range(len(z_scores) - window + 1):
+        #     window_z = z_scores[i:i+window]
+        #     if np.all(np.abs(window_z) < z_thresh):
+        #         valid_mask[i:i+window] = True
+
+        # # Replace invalid regions with NaN (or optionally 0)
+        # video_data['10_x'] = np.where(valid_mask, video_data['10_x'], np.nan)
+
+
+
+
+        # # Compute z-scores on a copy to avoid chained assignment issues
+        # z_scores = zscore(video_data['10_y'].values)
+
+        # # Parameters
+        # z_thresh = 5.0
+        # window = 5
+
+        # # Initialize boolean mask (True = keep)
+        # valid_mask = np.full(len(z_scores), False)
+
+        # # Identify valid windows
+        # for i in range(len(z_scores) - window + 1):
+        #     window_z = z_scores[i:i+window]
+        #     if np.all(np.abs(window_z) < z_thresh):
+        #         valid_mask[i:i+window] = True
+
+        # # Replace invalid regions with NaN (or optionally 0)
+        # video_data['10_y'] = np.where(valid_mask, video_data['10_y'], np.nan)
+
+
+        # Plotting
+        plt.figure(figsize=(12, 6))
+        plt.plot(video_data['11_x'], label='ax', alpha=0.8)
+        plt.plot(video_data['11_y'], label='ay', alpha=0.8)
+        # plt.plot(imu_data['az'], label='az', alpha=0.8)
+        # plt.plot(video_mag, label='magnitude', color='black', linewidth=1.5)
+
+        plt.xlabel("Frame / Sample Index")
+        plt.ylabel("Filtered Acceleration")
+        plt.title("Filtered IMU Axes and Magnitude")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
 
 
         # High-pass filter each IMU axis
@@ -114,14 +174,21 @@ def main():
         # Compute magnitude
         imu_mag = compute_magnitude(imu_data)
 
+
+
+
         # High-pass filter each video axis
-        video_data['10_x'] = highpass_filter(video_data['10_x'], freq=30, cutoff=0.5)
-        video_data['10_y'] = highpass_filter(video_data['10_y'], freq=30, cutoff=0.5)
+        video_data['11_x'] = highpass_filter(video_data['11_x'], freq=30, cutoff=0.5)
+        video_data['11_y'] = highpass_filter(video_data['11_y'], freq=30, cutoff=0.5)
         # Low-pass filter each video axis
-        video_data['10_x'] = lowpass_filter(video_data['10_x'], freq=30, cutoff=1.0)
-        video_data['10_y'] = lowpass_filter(video_data['10_y'], freq=30, cutoff=1.0)
+        video_data['11_x'] = lowpass_filter(video_data['11_x'], freq=30, cutoff=1.0)
+        video_data['11_y'] = lowpass_filter(video_data['11_y'], freq=30, cutoff=1.0)
         # Compute magnitude
         video_mag = position_to_acceleration(video_data)
+
+
+
+
 
         # # Remove the gravity component from the imu data
         # imu_mag_hp = highpass_filter(imu_mag, freq=100, cutoff=0.2)

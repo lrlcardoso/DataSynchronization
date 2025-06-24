@@ -16,8 +16,8 @@ TARGET_SUBFOLDERS = ["FMA_and_VR", "VR", "CT"]
 
 # --- File Paths ---
 SEGMENTATION_FILE = "data/segments.txt"
-IMU_DATA_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data\Processed\P01\Session2_20250210\WMORE"
-VIDEO_MARKER_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data\Processed\P01\Session2_20250210\Video\VR"
+IMU_DATA_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data\Processed\P08\Session1_20250304\WMORE"
+VIDEO_MARKER_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data\Processed\P08\Session1_20250304\Video\CT"
 OUTPUT_DIR = "results/"
 
 # --- Processing Parameters ---

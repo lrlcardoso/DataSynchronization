@@ -39,7 +39,7 @@ def resample_signal(signal, target_freq, time_col='Unix Time'):
     resampled_df = pd.DataFrame(resampled)
     return resampled_df
 
-def position_to_acceleration(df, time_col='Unix Time', x_col='10_x', y_col='10_y', acc_col='Magnitude'):
+def position_to_acceleration(df, time_col='Unix Time', x_col='11_x', y_col='11_y', acc_col='Magnitude'):
     """
     Given a DataFrame with time and x/y position, compute acceleration magnitude.
     
