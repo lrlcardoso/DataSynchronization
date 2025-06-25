@@ -104,17 +104,3 @@ def load_imu_data(IMU_DATA_DIR, affected_side, seg_interval):
     # Select relevant columns
     imu_data = df_filtered[required_cols].reset_index(drop=True)
     return imu_data
-
-def load_video_marker_data(marker_dir, camera, interval):
-    """
-    Loads video marker acceleration magnitude for the specified camera and interval.
-    """
-    # TODO: Implement loading and interval extraction
-    pass
-
-def determine_wrist_side(camera_label):
-    """
-    Determines if the camera corresponds to left or right wrist.
-    """
-    # TODO: Implement logic based on camera_label naming convention
-    pass

@@ -7,37 +7,44 @@ import pandas as pd
 from scipy.signal import butter, filtfilt
 from scipy.signal import correlate
 
-# def resample_signal(signal, target_freq, time_col='Unix Time'):
-#     """
-#     Resample a signal DataFrame to the target frequency using linear interpolation.
+def smooth_signal(df, window=5, mag_col="Magnitude"):
+    """
+    Applies a moving average (rolling mean) to the magnitude column.
 
-#     Parameters:
-#         signal (pd.DataFrame): Input data, must include a time column (default 'Unix Time').
-#         orig_freq (float): Original sampling frequency (Hz).
-#         target_freq (float): Target sampling frequency (Hz).
-#         time_col (str): Name of the time column (default 'Unix Time').
+    Parameters:
+        df (pd.DataFrame): Input DataFrame with a 'Magnitude' column.
+        window (int): Window size (in samples).
+        mag_col (str): Name of the column to smooth.
 
-#     Returns:
-#         pd.DataFrame: Resampled DataFrame with same columns as input, at new frequency.
-#     """
-#     # Set up new uniformly spaced time axis
-#     start_time = signal[time_col].iloc[0]
-#     end_time = signal[time_col].iloc[-1]
-#     num_samples = int(np.floor((end_time - start_time) * target_freq)) + 1
-#     new_times = np.linspace(start_time, end_time, num_samples)
+    Returns:
+        pd.DataFrame: DataFrame with the same columns and smoothed magnitude.
+    """
+    out = df.copy()
+    out[mag_col] = out[mag_col].rolling(window=window, center=True, min_periods=window).mean()
 
-#     # Interpolate each column except time
-#     resampled = {time_col: new_times}
-#     for col in signal.columns:
-#         if col == time_col:
-#             continue
-#         resampled[col] = np.interp(
-#             new_times,
-#             signal[time_col].values,
-#             signal[col].values
-#         )
-#     resampled_df = pd.DataFrame(resampled)
-#     return resampled_df
+    return out
+
+def teager_kaiser_energy(data):
+    """
+    Apply TKEO to signal columns, preserving time column.
+    Works with both NumPy arrays and Pandas DataFrames.
+    Assumes time is in the first column.
+    """
+    if isinstance(data, pd.DataFrame):
+        time = data.iloc[:, [0]]
+        signal = data.iloc[:, 1:].values
+        tkeo = np.zeros_like(signal)
+        tkeo[1:-1] = signal[1:-1]**2 - signal[:-2] * signal[2:]
+        tkeo_df = pd.DataFrame(tkeo, columns=data.columns[1:], index=data.index)
+        return pd.concat([time, tkeo_df], axis=1)
+
+    else:  # assume NumPy
+        time = data[:, [0]]
+        signal = data[:, 1:]
+        tkeo = np.zeros_like(signal)
+        tkeo[1:-1] = signal[1:-1]**2 - signal[:-2] * signal[2:]
+        return np.hstack((time, tkeo))
+
 
 def position_to_acceleration(df, x_col, y_col):
     """
@@ -213,28 +220,6 @@ def lowpass_filter(df, fs, cutoff, order):
             filtered_df[col] = signal  # fallback: unfiltered
 
     return filtered_df
-
-# def resample_signal(df, target_freq):
-#     if df.empty:
-#         raise ValueError("Input DataFrame is empty.")
-    
-#     time_col = 'Unix Time'
-
-#     # Define new time vector
-#     start_time = df[time_col].iloc[0]
-#     end_time = df[time_col].iloc[-1]
-#     duration = end_time - start_time
-#     num_samples = int(np.floor(duration * target_freq)) + 1
-#     new_times = np.linspace(start_time, end_time, num_samples)
-
-#     # Prepare output dictionary with interpolated columns
-#     resampled = {time_col: new_times}
-#     for col in df.columns:
-#         if col == time_col:
-#             continue
-#         resampled[col] = np.interp(new_times, df[time_col].values, df[col].values)
-
-#     return pd.DataFrame(resampled)
 
 def resample_signal(df, target_freq, fill_missing_with_zero=False):
     if df.empty:

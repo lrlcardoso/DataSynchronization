@@ -10,16 +10,10 @@ Version:        1.0
 """
 
 ROOT_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data"
-SELECTED_PATIENTS = ["P05"]
-SELECTED_SESSIONS = ["Session1"]
+SELECTED_PATIENTS = ["P03"]
+SELECTED_SESSIONS = ["Session2"]
 SELECTED_SUBFOLDERS = ["FMA_and_VR", "VR", "CT"]
 SELECTED_SEGMENTS = None
-
-# --- File Paths ---
-SEGMENTATION_FILE = "data/segments.txt"
-IMU_DATA_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data\Processed\P08\Session1_20250304\WMORE"
-VIDEO_MARKER_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data\Processed\P08\Session1_20250304\Video\CT"
-OUTPUT_DIR = "results/"
 
 # --- Processing Parameters ---
 IMU_FREQ = 100           # Hz
@@ -29,16 +23,14 @@ FILTER_LOW_CUT = 0.5
 FILTER_HIGH_CUT = 1.0
 FILTER_ORDER = 2
 
-# --- Normalization ---
-NORM_METHOD = "zscore"   # 'zscore' or 'minmax'
-
 # --- Correlation ---
 LAG_RANGE = 5          # seconds, search +/- this window
 
 # --- Plotting ---
-PLOT_FORMAT = "png"
 SHOW_PLOTS = True
 SAVE_PLOTS = False
 
 # --- CSV Output ---
+OUTPUT_DIR = "results/"
 SAVE_CSV = True
+

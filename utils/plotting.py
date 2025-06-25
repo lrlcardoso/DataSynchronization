@@ -5,6 +5,7 @@ Plotting functions for lag similarity and aligned signals.
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from scipy.signal import spectrogram
 
 def plot_similarity_vs_lag(similarity_curve, fs, lag_range, label, output_dir, save=True):
     """
@@ -111,3 +112,29 @@ def plot_debug(video_data_resampled, video_data_bandpass_filtered, marker, label
     plt.grid(True)
     plt.tight_layout()
     plt.show()
+
+def plot_spectrograms(video_norm, fs=30):  # Set fs = your actual sampling rate
+    """
+    Plots spectrograms of all signal columns in video_norm.
+    
+    Parameters:
+    - video_norm: pd.DataFrame with first column as time
+    - fs: Sampling frequency in Hz (default = 100)
+    """
+    signal_cols = video_norm.columns[1:]  # skip time column
+    time_vec = video_norm.iloc[:, 0].values
+    time_vec = (time_vec - time_vec[0])  # convert Unix time to relative seconds
+    
+    for col in signal_cols:
+        signal = video_norm[col].values
+
+        f, t, Sxx = spectrogram(signal, fs=fs, nperseg=256, noverlap=128)
+
+        plt.figure(figsize=(10, 4))
+        plt.pcolormesh(t, f, 10 * np.log10(Sxx + 1e-12), shading='gouraud')  # dB scale
+        plt.title(f"Spectrogram of {col}")
+        plt.ylabel("Frequency [Hz]")
+        plt.xlabel("Time [s]")
+        plt.colorbar(label="Power [dB]")
+        plt.tight_layout()
+        plt.show()
