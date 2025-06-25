@@ -74,3 +74,40 @@ def plot_aligned_signals(imu_norm, video_norm, lag_samples, fs, label, output_di
         plt.close()
     else:
         plt.show()
+
+def plot_debug(video_data_resampled, video_data_bandpass_filtered, marker, labels=None):
+    """
+    Plots a debug comparison of resampled vs bandpass-filtered video data.
+
+    Parameters:
+    - video_data_resampled: DataFrame containing the resampled signal with 'Unix Time'
+    - video_data_bandpass_filtered: DataFrame with bandpass-filtered result
+    - marker: str, the marker column name (e.g., '10_x' or '11_y')
+    - labels: Optional tuple/list of (label1, label2) for the legend
+    """
+    plot_column = marker
+    label1 = labels[0] if labels and len(labels) > 0 else "Signal 1"
+    label2 = labels[1] if labels and len(labels) > 1 else "Signal 2"
+
+    plt.figure(figsize=(12, 5))
+
+    # Resampled signal
+    plt.plot(
+        video_data_resampled["Unix Time"], video_data_resampled[plot_column],
+        label=label1, color='tab:orange', linewidth=1.5, alpha=0.8
+    )
+
+    # Bandpass-filtered signal
+    plt.plot(
+        video_data_bandpass_filtered["Unix Time"], video_data_bandpass_filtered[plot_column],
+        label=label2, color='tab:green', linewidth=2, linestyle='-', alpha=0.9, marker='.', markersize=4
+    )
+
+    # Labels and formatting
+    plt.xlabel("Unix Time (s)")
+    plt.ylabel(plot_column)
+    plt.title(f"{plot_column} — {label1} vs {label2}")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()

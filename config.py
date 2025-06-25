@@ -10,9 +10,10 @@ Version:        1.0
 """
 
 ROOT_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data"
-SELECTED_PATIENTS = ["P01"]
-SELECTED_SESSIONS = ["Session2"]
-TARGET_SUBFOLDERS = ["FMA_and_VR", "VR", "CT"]
+SELECTED_PATIENTS = ["P05"]
+SELECTED_SESSIONS = ["Session1"]
+SELECTED_SUBFOLDERS = ["FMA_and_VR", "VR", "CT"]
+SELECTED_SEGMENTS = None
 
 # --- File Paths ---
 SEGMENTATION_FILE = "data/segments.txt"
@@ -23,8 +24,10 @@ OUTPUT_DIR = "results/"
 # --- Processing Parameters ---
 IMU_FREQ = 100           # Hz
 VIDEO_FREQ = 30          # Hz
-COMMON_FREQ = 30        # Hz (target frequency for resampling)
 TIME_MARGIN = 0.0        # seconds before/after each segment
+FILTER_LOW_CUT = 0.5
+FILTER_HIGH_CUT = 1.0
+FILTER_ORDER = 2
 
 # --- Normalization ---
 NORM_METHOD = "zscore"   # 'zscore' or 'minmax'
