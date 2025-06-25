@@ -144,7 +144,7 @@ def run_sync(video_path, patient, session, affected_side):
         video_data_lowpass_filtered = lowpass_filter_avoiding_gaps(video_data_resampled, fs=VIDEO_FREQ, cutoff=FILTER_HIGH_CUT, order=FILTER_ORDER)
 
         # Uncomment to plot (for debugging)
-        # plot_debug(video_data_resampled, video_data_lowpass_filtered, f"{marker}y", labels=["Video - resampled", "Video - filtered"])
+        # plot_debug(video_data_resampled, video_data_lowpass_filtered, markers=(f"{marker}y",f"{marker}y"), labels=["Video - resampled", "Video - filtered"])
 
         # Apply a highpass filter to match to the IMU that must be highpassed filtered to get rid of the gravity effect
         video_data_bandpass_filtered = highpass_filter(video_data_lowpass_filtered, fs=VIDEO_FREQ, cutoff=FILTER_LOW_CUT, order=FILTER_ORDER)
@@ -156,7 +156,7 @@ def run_sync(video_path, patient, session, affected_side):
         imu_data_lowpass_filtered = lowpass_filter(imu_data_resampled, fs=IMU_FREQ, cutoff=FILTER_HIGH_CUT, order=FILTER_ORDER)
 
         # Uncomment to plot (for debugging)
-        # plot_debug(imu_data_resampled, imu_data_lowpass_filtered, "ax", labels=["IMU - resampled", "IMU - filtered"])
+        # plot_debug(imu_data_resampled, imu_data_lowpass_filtered, markers=("ax","ax"), labels=["IMU - resampled", "IMU - filtered"])
 
         # Apply a highpass filter to remove gravity
         imu_data_bandpass_filtered = highpass_filter(imu_data_lowpass_filtered, fs=IMU_FREQ, cutoff=FILTER_HIGH_CUT, order=FILTER_ORDER)
@@ -183,7 +183,8 @@ def run_sync(video_path, patient, session, affected_side):
         imu_norm = normalize_signal(imu_smooth, NORM_METHOD)
 
         # Uncomment to plot (for debugging)
-        plot_debug(video_norm, imu_norm, "Magnitude", labels=["Video", "IMU"])
+        # plot_debug(video_norm, imu_norm,  markers=("Magnitude","Magnitude") , labels=["Video", "IMU"])
+        plot_debug(video_norm, video_data_resampled, markers=("Magnitude", f"{marker}y"), labels=["Video", "resampled"])
 
         # Cross-correlate
         lag_samples, max_corr, similarity_curve = compute_cross_correlation(

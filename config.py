@@ -13,7 +13,7 @@ ROOT_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data"
 SELECTED_PATIENTS = ["P03"]
 SELECTED_SESSIONS = ["Session2"]
 SELECTED_SUBFOLDERS = ["FMA_and_VR", "VR", "CT"]
-SELECTED_SEGMENTS = None
+SELECTED_SEGMENTS = [2]
 
 # --- Processing Parameters ---
 IMU_FREQ = 100           # Hz
@@ -27,7 +27,7 @@ FILTER_ORDER = 2
 LAG_RANGE = 5          # seconds, search +/- this window
 
 # --- Plotting ---
-SHOW_PLOTS = True
+SHOW_PLOTS = False
 SAVE_PLOTS = False
 
 # --- CSV Output ---
