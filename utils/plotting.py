@@ -39,35 +39,27 @@ def plot_similarity_vs_lag(similarity_curve, fs, lag_range, label, output_dir, s
 
 def plot_aligned_signals(imu_norm, video_norm, lag_samples, fs, label, output_dir, save=False):
     """
-    Plot IMU and video normalized signals with the optimal lag applied to video.
-    
-    Parameters:
-        imu_norm (pd.DataFrame): IMU signal with 'Unix Time' and 'Magnitude'.
-        video_norm (pd.DataFrame): Video signal with 'Unix Time' and 'Magnitude'.
-        lag_samples (int): Number of samples to shift video signal.
-        fs (float): Sampling frequency (Hz).
-        label (str): Identifier for filename and title.
-        output_dir (str): Directory to save plots.
-        save (bool): If True, saves plot to output_dir.
+    Plot IMU and video normalized signals with the optimal lag applied to video timestamps.
     """
-    # Shift video signal by lag_samples
+    # Shift video time by lag (in seconds)
+    shift_seconds = lag_samples / fs
     shifted_video = video_norm.copy()
-    shifted_video['Magnitude'] = shifted_video['Magnitude'].shift(lag_samples, fill_value=np.nan)
-    
-    # Use a relative time axis (segment time)
+    shifted_video['Unix Time'] += shift_seconds
+
+    # Relative time axes
     imu_time = imu_norm['Unix Time'] - imu_norm['Unix Time'].iloc[0]
-    video_time = shifted_video['Unix Time'] - shifted_video['Unix Time'].iloc[0]
-    
+    video_time = shifted_video['Unix Time'] - imu_norm['Unix Time'].iloc[0]  # align to IMU start
+
     plt.figure(figsize=(12, 5))
     plt.plot(imu_time, imu_norm['Magnitude'], label="IMU", alpha=0.8)
-    plt.plot(video_time, shifted_video['Magnitude'], label=f"Video (shifted by {lag_samples/fs:.3f} s)", alpha=0.8)
+    plt.plot(video_time, shifted_video['Magnitude'], label=f"Video (shifted by {shift_seconds:.3f} s)", alpha=0.8)
     plt.xlabel("Segment Time (s)")
     plt.ylabel("Normalized Magnitude")
     plt.title(f"Aligned Signals - {label}")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    
+
     if save:
         os.makedirs(output_dir, exist_ok=True)
         out_path = os.path.join(output_dir, f"{label}_aligned_signals.png")
@@ -75,6 +67,7 @@ def plot_aligned_signals(imu_norm, video_norm, lag_samples, fs, label, output_di
         plt.close()
     else:
         plt.show()
+
 
 def plot_debug(video_data_resampled, video_data_bandpass_filtered, markers, labels=None):
     """
@@ -100,8 +93,8 @@ def plot_debug(video_data_resampled, video_data_bandpass_filtered, markers, labe
 
     # Resampled signal
     plt.plot(
-        video_data_resampled["Unix Time"], -200*video_data_resampled[markers[0]],
-        label=label1, color='tab:orange', linewidth=1.5, alpha=0.8
+        video_data_resampled["Unix Time"], video_data_resampled[markers[0]],
+        label=label1, color='tab:orange', linewidth=1.5, alpha=0.8, marker='.', markersize=4
     )
 
     # Bandpass-filtered signal

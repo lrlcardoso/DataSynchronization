@@ -20,7 +20,7 @@ def smooth_signal(df, window=5, mag_col="Magnitude"):
         pd.DataFrame: DataFrame with the same columns and smoothed magnitude.
     """
     out = df.copy()
-    out[mag_col] = out[mag_col].rolling(window=window, center=True, min_periods=window).mean()
+    out[mag_col] = out[mag_col].rolling(window=window, center=True, min_periods=1).mean()
 
     return out
 
@@ -45,40 +45,47 @@ def teager_kaiser_energy(data):
         tkeo[1:-1] = signal[1:-1]**2 - signal[:-2] * signal[2:]
         return np.hstack((time, tkeo))
 
-
 def position_to_acceleration(df, x_col, y_col):
     """
-    Given a DataFrame with time and x/y position, compute acceleration magnitude.
-    
+    Compute acceleration magnitude from position data, skipping over NaN regions.
+
     Parameters:
-        df (pd.DataFrame): Must include time_col, x_col, y_col.
-        time_col (str): Time column.
-        x_col (str): X position column.
-        y_col (str): Y position column.
-        acc_col (str): Output acceleration magnitude column name.
-        
+        df (pd.DataFrame): Must include 'Unix Time', x_col, and y_col.
+        x_col (str): X position column name.
+        y_col (str): Y position column name.
+
     Returns:
-        pd.DataFrame: [time_col, acc_col]
+        pd.DataFrame: DataFrame with ['Unix Time', 'Magnitude'] where acceleration
+                      is computed only for valid segments (others remain NaN).
     """
+    time_col = 'Unix Time'
+    acc_col = 'Magnitude'
 
-    time_col='Unix Time'
-    acc_col='Magnitude'
+    # Mask where data is valid
+    valid_mask = df[[x_col, y_col]].notna().all(axis=1)
 
-    t = df[time_col].values
-    x = df[x_col].values
-    y = df[y_col].values
+    # Pre-fill with NaNs
+    acc_mag = np.full(len(df), np.nan)
 
-    # First derivative: velocity
-    vx = np.gradient(x, t)
-    vy = np.gradient(y, t)
+    if valid_mask.sum() >= 5:  # At least enough points for gradient to be meaningful
+        # Extract valid slices
+        t_valid = df[time_col][valid_mask].values
+        x_valid = df[x_col][valid_mask].values
+        y_valid = df[y_col][valid_mask].values
 
-    # Second derivative: acceleration
-    ax = np.gradient(vx, t)
-    ay = np.gradient(vy, t)
+        # Compute acceleration
+        vx = np.gradient(x_valid, t_valid)
+        vy = np.gradient(y_valid, t_valid)
+        ax = np.gradient(vx, t_valid)
+        ay = np.gradient(vy, t_valid)
+        acc_valid = np.sqrt(ax**2 + ay**2)
 
-    acc_mag = np.sqrt(ax**2 + ay**2)
-    out = pd.DataFrame({time_col: t, acc_col: acc_mag})
-    return out
+        # Insert computed values into the full output array
+        acc_mag[valid_mask.values] = acc_valid
+
+    return pd.DataFrame({time_col: df[time_col], acc_col: acc_mag})
+
+
 
 def compute_magnitude(df, time_col='Unix Time', mag_col='Magnitude'):
     """
@@ -108,120 +115,115 @@ def design_highpass_filter(cutoff, fs, order):
     b, a = butter(order, cutoff / nyquist, btype='high')
     return b, a
 
-def lowpass_filter_avoiding_gaps(df, fs, cutoff, order):
-    b, a = design_lowpass_filter(cutoff, fs, order)
-    padlen = 3 * max(len(a), len(b)) + 1
-
-    filtered_data = df.copy()
-
-    for col in df.columns:
-        if col == "Unix Time":
-            continue
-
-        signal = df[col].values
-        filtered_signal = np.full_like(signal, np.nan, dtype=float)
-
-        valid_idx = signal != 0
-        valid_signal = signal[valid_idx]
-        if len(valid_signal) == 0:
-            continue
-
-        valid_time = np.where(valid_idx)[0] / fs
-        time_diffs = np.diff(valid_time)
-        gap_logical = np.concatenate([[True], time_diffs > 1.5 / fs, [True]])
-        chunk_boundaries = np.where(gap_logical)[0]
-        valid_positions = np.where(valid_idx)[0]
-
-        for i in range(len(chunk_boundaries) - 1):
-            start = chunk_boundaries[i]
-            end = chunk_boundaries[i + 1]
-            chunk = valid_signal[start:end]
-            pos_start = valid_positions[start]
-            pos_end = valid_positions[end - 1] + 1  # exclusive
-
-            if len(chunk) >= padlen:
-                try:
-                    filtered_chunk = filtfilt(b, a, chunk)
-                except Exception as e:
-                    print(f"⚠️ Filter failed for column '{col}' chunk {i} (len={len(chunk)}): {e}")
-                    filtered_chunk = chunk
-            else:
-                filtered_chunk = chunk  # fallback: keep original (will be interpolated)
-
-            filtered_signal[pos_start:pos_end] = filtered_chunk
-
-        # Interpolate across all NaNs (zero regions)
-        nans = np.isnan(filtered_signal)
-        not_nans = ~nans
-        if np.sum(not_nans) >= 2:
-            filtered_signal[nans] = np.interp(
-                np.flatnonzero(nans),
-                np.flatnonzero(not_nans),
-                filtered_signal[not_nans]
-            )
-        else:
-            # fallback: no interpolation possible
-            filtered_signal[nans] = 0
-
-        filtered_data[col] = filtered_signal
-
-    return filtered_data
-
 def highpass_filter(df, fs, cutoff, order):
+    """
+    Apply high-pass Butterworth filter to valid (non-NaN) segments of each signal column.
+    Segments too short for filtering are replaced with NaN.
+
+    Parameters:
+        df (pd.DataFrame): DataFrame with 'Unix Time' and signal columns.
+        fs (float): Sampling frequency.
+        cutoff (float): High-pass cutoff frequency.
+        order (int): Filter order.
+
+    Returns:
+        pd.DataFrame: Filtered DataFrame with same structure as input.
+    """
     b, a = design_highpass_filter(cutoff, fs, order)
+    padlen = 3 * max(len(a), len(b)) + 1
     filtered_df = df.copy()
 
     for col in df.columns:
         if col == "Unix Time":
             continue
 
-        signal = df[col].values
-        padlen = 3 * max(len(a), len(b)) + 1
-
-        if len(signal) >= padlen:
-            try:
-                filtered_df[col] = filtfilt(b, a, signal)
-            except Exception as e:
-                print(f"⚠️ High-pass filter failed for column '{col}': {e}")
-                filtered_df[col] = signal  # fallback
-        else:
-            print(f"⚠️ Skipping filtering for {col} (too short)")
+        signal = df[col]
+        if signal.isnull().all():
             filtered_df[col] = signal
+            continue
+
+        # Initialize result with NaNs
+        filtered_signal = pd.Series(np.nan, index=signal.index)
+
+        # Find valid (non-NaN) continuous segments
+        is_valid = signal.notna()
+        valid_groups = (is_valid != is_valid.shift()).cumsum()[is_valid]
+
+        for _, group_idx in valid_groups.groupby(valid_groups):
+            idx = group_idx.index
+            segment = signal.loc[idx]
+
+            if len(segment) >= padlen:
+                try:
+                    filtered_segment = filtfilt(b, a, segment)
+                    filtered_signal.loc[idx] = filtered_segment
+                except Exception as e:
+                    print(f"⚠️ High-pass filter failed for segment in '{col}': {e}")
+                    # Already NaN
+            else:
+                # Force fill short segment with NaN
+                filtered_signal.loc[idx] = np.nan
+
+        filtered_df[col] = filtered_signal
 
     return filtered_df
 
 
 def lowpass_filter(df, fs, cutoff, order):
     """
-    Apply low-pass Butterworth filter to all columns in the DataFrame
-    except 'Unix Time'.
+    Apply low-pass Butterworth filter to valid (non-NaN) segments of the signal.
+    Segments too short for filtering are filled with NaN.
 
     Parameters:
-    - df: pd.DataFrame, with 'Unix Time' and signal columns
-    - fs: float, sampling frequency (e.g., 30 Hz)
-    - cutoff: float, low-pass cutoff frequency (e.g., 1.0 Hz)
-    - order: int, filter order (e.g., 2)
+        df (pd.DataFrame): DataFrame with 'Unix Time' and signal columns.
+        fs (float): Sampling frequency.
+        cutoff (float): Low-pass cutoff frequency.
+        order (int): Filter order.
 
     Returns:
-    - filtered_df: pd.DataFrame, same format as input but filtered
+        pd.DataFrame: Filtered DataFrame with same structure.
     """
     nyquist = 0.5 * fs
     b, a = butter(order, cutoff / nyquist, btype='low')
+    padlen = 3 * max(len(a), len(b)) + 1
     filtered_df = df.copy()
 
     for col in df.columns:
         if col == "Unix Time":
             continue
-        signal = df[col].values
-        try:
-            filtered_df[col] = filtfilt(b, a, signal)
-        except ValueError as e:
-            print(f"⚠️ Filtering failed for column '{col}': {e}")
-            filtered_df[col] = signal  # fallback: unfiltered
+
+        signal = df[col]
+        if signal.isnull().all():
+            raise ValueError(f"Column '{col}' contains only NaN values and cannot be filtered.")
+        
+        # Start with full NaN array
+        filtered_signal = pd.Series(np.nan, index=signal.index)
+
+        # Identify valid (non-NaN) chunks
+        is_valid = signal.notna()
+        valid_groups = (is_valid != is_valid.shift()).cumsum()[is_valid]
+
+        for _, group_idx in valid_groups.groupby(valid_groups):
+            idx = group_idx.index
+            segment = signal.loc[idx]
+
+            if len(segment) >= padlen:
+                try:
+                    filtered_segment = filtfilt(b, a, segment)
+                    filtered_signal.loc[idx] = filtered_segment
+                except Exception as e:
+                    print(f"⚠️ Filtering failed for segment in '{col}': {e}")
+                    # Leave as NaN (already is)
+            else:
+                # Forcefully replace too-short segments with NaN
+                filtered_signal.loc[idx] = np.nan
+
+        filtered_df[col] = filtered_signal
 
     return filtered_df
 
-def resample_signal(df, target_freq, fill_missing_with_zero=False):
+
+def resample_signal(df, target_freq, fill_missing_with_nan):
     if df.empty:
         raise ValueError("Input DataFrame is empty.")
 
@@ -235,29 +237,59 @@ def resample_signal(df, target_freq, fill_missing_with_zero=False):
     t_new = np.arange(0, duration, 1 / target_freq)
     t_unix = start_time + t_new  # Absolute Unix timestamps
 
-    if fill_missing_with_zero:
-        # Zero-filling approach
-        resampled_array = np.zeros((len(t_new), len(signal_cols)))
+    if fill_missing_with_nan:
+        # NaN-filling approach
+        resampled_array = np.full((len(t_new), len(signal_cols)), np.nan)
         index_map = np.round((df[time_col] - start_time) * target_freq).astype(int)
 
         for col_idx, col in enumerate(signal_cols):
             signal = df[col].values
             for i, idx in enumerate(index_map):
                 if 0 <= idx < len(t_new):
-                    resampled_array[idx, col_idx] = signal[i]
+                    val = signal[i]
+                    # Avoid setting 0 — treat it as a gap
+                    resampled_array[idx, col_idx] = np.nan if val == 0 else val
 
         resampled_df = pd.DataFrame(resampled_array, columns=signal_cols)
+        resampled_df.insert(0, time_col, t_unix)
+        return resampled_df
+
     else:
         # Interpolation approach
         resampled_dict = {time_col: t_unix}
         for col in signal_cols:
             resampled_dict[col] = np.interp(t_unix, df[time_col].values, df[col].values)
-        resampled_df = pd.DataFrame(resampled_dict)
-        return resampled_df
+        return pd.DataFrame(resampled_dict)
+    
 
-    # Final assembly for zero-fill case
-    resampled_df.insert(0, time_col, t_unix)
-    return resampled_df
+def align_signals(matrix1, matrix2, method='nearest'):
+    df1 = pd.DataFrame(matrix1, columns=["Unix Time", "Magnitude"])
+    df2 = pd.DataFrame(matrix2, columns=["Unix Time", "Magnitude"])
+
+    df2_indexed = df2.set_index("Unix Time")
+
+    if method == 'nearest':
+        aligned2 = df2_indexed.reindex(df1["Unix Time"], method="nearest").reset_index()
+
+    elif method == 'interp':
+        # Interpolation requires datetime index
+        union_times = df2_indexed.index.union(df1["Unix Time"]).sort_values()
+        df2_union = df2_indexed.reindex(union_times)
+
+        df2_union.index = pd.to_datetime(df2_union.index, unit='s')
+        df1_times_dt = pd.to_datetime(df1["Unix Time"], unit='s')
+
+        interpolated = df2_union.interpolate(method="time")
+        aligned2 = interpolated.loc[df1_times_dt].reset_index()
+        aligned2.rename(columns={"index": "Unix Time"}, inplace=True)
+        aligned2["Unix Time"] = df1["Unix Time"].values  # restore original float times
+
+    else:
+        raise ValueError("method must be 'nearest' or 'interp'")
+
+    aligned_matrix2 = pd.DataFrame(aligned2, columns=["Unix Time", "Magnitude"])
+    return aligned_matrix2
+
 
 
 
@@ -286,46 +318,60 @@ def normalize_signal(df, method="zscore", mag_col="Magnitude"):
         raise ValueError(f"Unknown normalization method: {method}")
     return out
 
+
 def compute_cross_correlation(imu_norm, video_norm, fs, lag_range, mag_col="Magnitude"):
     """
-    Computes cross-correlation between IMU and video magnitude signals.
-    Shifts video signal to align with IMU (IMU is reference).
-
-    Parameters:
-        imu_norm (pd.DataFrame): IMU signal with uniform sampling.
-        video_norm (pd.DataFrame): Video signal with uniform sampling.
-        fs (float): Sampling frequency (Hz).
-        lag_range (float): Maximum absolute lag to consider (seconds).
-        mag_col (str): Column with magnitude values.
+    Computes cross-correlation between IMU and video signals, using only overlapping,
+    non-NaN samples.
 
     Returns:
-        lag_samples (int): Lag (in samples) for max correlation (positive = video lags behind IMU).
-        max_corr (float): Maximum correlation value.
-        similarity_curve (np.array): Cross-correlation curve for valid lags.
+        lag_samples (int): Optimal lag (video relative to IMU, in samples).
+        max_corr (float): Maximum normalized correlation.
+        similarity_curve (np.ndarray): Cross-correlation curve within lag_range.
     """
     x = imu_norm[mag_col].values
     y = video_norm[mag_col].values
+
+    # Align full length
     min_len = min(len(x), len(y))
     x = x[:min_len]
     y = y[:min_len]
 
-    corr = correlate(x, y, mode='full')
-    lags = np.arange(-len(x)+1, len(x))
+    # Mask valid overlapping region
+    valid_mask = ~np.isnan(x) & ~np.isnan(y)
+    if not np.any(valid_mask):
+        raise ValueError("No overlapping valid samples found.")
+
+    x_valid = x[valid_mask]
+    y_valid = y[valid_mask]
+
+    if len(x_valid) < 3:
+        raise ValueError("Not enough valid data for cross-correlation.")
+
+    # Compute full cross-correlation (y is shifted relative to x)
+    corr = correlate(y_valid, x_valid, mode='full')
+    lags = np.arange(-len(x_valid) + 1, len(x_valid))
 
     # Normalize
-    norm_factor = np.sqrt(np.sum(x ** 2) * np.sum(y ** 2))
-    corr = corr / norm_factor
-    
-    # Limit to desired lag window (in samples)
+    norm = np.sqrt(np.sum(x_valid ** 2) * np.sum(y_valid ** 2))
+    if norm == 0:
+        raise ValueError("Cannot normalize correlation (zero energy).")
+    corr /= norm
+
+    # Limit to desired lag window
     max_lag_samples = int(lag_range * fs)
     center = len(corr) // 2
-    valid_range = (center - max_lag_samples, center + max_lag_samples + 1)
-    valid_corr = corr[valid_range[0]:valid_range[1]]
-    valid_lags = lags[valid_range[0]:valid_range[1]]
+    start = max(center - max_lag_samples, 0)
+    end = min(center + max_lag_samples + 1, len(corr))
 
-    # Find lag of maximum correlation
+    valid_corr = corr[start:end]
+    valid_lags = lags[start:end]
+
+    # Find best lag
     max_idx = np.argmax(valid_corr)
     lag_samples = valid_lags[max_idx]
     max_corr = valid_corr[max_idx]
-    
+
     return lag_samples, max_corr, valid_corr
+
+

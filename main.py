@@ -21,15 +21,14 @@ from config import (
     FILTER_LOW_CUT, FILTER_HIGH_CUT, FILTER_ORDER,
     ROOT_DIR, SELECTED_PATIENTS, SELECTED_SESSIONS,
     SELECTED_SUBFOLDERS, SELECTED_SEGMENTS, SHOW_PLOTS,
-    SAVE_PLOTS, OUTPUT_DIR
+    SAVE_PLOTS, OUTPUT_DIR, WINDOW_SIZE
 )
 from utils.file_utils import load_imu_data, get_videos_info
 from utils.signal_processing import (
-    teager_kaiser_energy, smooth_signal,
-    lowpass_filter_avoiding_gaps, resample_signal,
+    teager_kaiser_energy, smooth_signal, resample_signal,
     compute_magnitude, highpass_filter, normalize_signal,
     lowpass_filter, position_to_acceleration,
-    compute_cross_correlation
+    compute_cross_correlation,align_signals
 )
 from utils.plotting import (
     plot_debug, plot_similarity_vs_lag,
@@ -38,26 +37,6 @@ from utils.plotting import (
 from utils.data_merge import merge_and_save_csv
 
 def run_sync(video_path, patient, session, affected_side):
-
-    # 0 - Status
-    # 1 - Load all necessary data and info
-    #   - video markers csv
-    #   - camera side
-    #   - imu csv (trimmed to the segment with margins)
-    # 2 - Preprocessing
-    #   - Video:
-    #       - Add zero to every gap
-    #       - Filter video data (avoiding zero or abrupt changes)
-    #   - IMU:
-    #       - Resample to 100Hz to make sure there is no gap
-    #       - Filter imu data 
-    # 3 - Compute magnitudes
-    # 4 - Resample to a common freq (30Hz)
-    # 5 - Smooth signals
-    # 6 - Drop NA
-    # 7 - Normalize
-    # 8 - Cross-correlate
-    # 9 - Plot and generate sync CSVs
 
     print("="*100)
     print(f"📝 Processing: {patient} ({affected_side}) | {session}")
@@ -137,11 +116,11 @@ def run_sync(video_path, patient, session, affected_side):
         imu_data['ax'] = -imu_data['ax']
 
         # 2 - Preprocessing
-        # Resample video_data to make sure thee is no gaps. Also add 0 to every gap to facilitate visualization
-        video_data_resampled = resample_signal(video_data, target_freq=VIDEO_FREQ, fill_missing_with_zero=True)
+        # Resample video_data to make sure there is no gaps. Also add 0 to every gap to facilitate visualization
+        video_data_resampled = resample_signal(video_data, target_freq=VIDEO_FREQ, fill_missing_with_nan=True)
 
         # Apply a lowpass filter to reduce noise, but do it avoiding the chunks in which the signal is zero (bad detection)
-        video_data_lowpass_filtered = lowpass_filter_avoiding_gaps(video_data_resampled, fs=VIDEO_FREQ, cutoff=FILTER_HIGH_CUT, order=FILTER_ORDER)
+        video_data_lowpass_filtered = lowpass_filter(video_data_resampled, fs=VIDEO_FREQ, cutoff=FILTER_HIGH_CUT, order=FILTER_ORDER)
 
         # Uncomment to plot (for debugging)
         # plot_debug(video_data_resampled, video_data_lowpass_filtered, markers=(f"{marker}y",f"{marker}y"), labels=["Video - resampled", "Video - filtered"])
@@ -150,7 +129,7 @@ def run_sync(video_path, patient, session, affected_side):
         video_data_bandpass_filtered = highpass_filter(video_data_lowpass_filtered, fs=VIDEO_FREQ, cutoff=FILTER_LOW_CUT, order=FILTER_ORDER)
 
         # Resample to IMU data to make sure there is no gap
-        imu_data_resampled = resample_signal(imu_data, IMU_FREQ, fill_missing_with_zero=False)
+        imu_data_resampled = resample_signal(imu_data, target_freq=IMU_FREQ, fill_missing_with_nan=True)
 
         # Apply a lowpass filter to reduce noise, matching the video_data
         imu_data_lowpass_filtered = lowpass_filter(imu_data_resampled, fs=IMU_FREQ, cutoff=FILTER_HIGH_CUT, order=FILTER_ORDER)
@@ -165,45 +144,40 @@ def run_sync(video_path, patient, session, affected_side):
         video_mag = position_to_acceleration(video_data_bandpass_filtered, f"{marker}x", f"{marker}y")
         imu_mag = compute_magnitude(imu_data_bandpass_filtered)
 
-        # 4 - Resample to a common freq (VIDEO_FREQ)
-        imu_rs = resample_signal(imu_mag, VIDEO_FREQ)
+        # 4 - Downsample IMU data to match video data
+        imu_rs = align_signals(video_mag, imu_mag, method='interp')
 
         # 5 - Smooth signals
-        window_size = 15
-        video_smooth = smooth_signal(video_mag, window=window_size)
-        imu_smooth = smooth_signal(imu_rs, window=window_size)
+        video_smooth = smooth_signal(video_mag, window=WINDOW_SIZE)
+        imu_smooth = smooth_signal(imu_rs, window=WINDOW_SIZE)
 
-        # 6 - Drop NA
-        video_smooth = video_smooth.dropna()
-        imu_smooth = imu_smooth.dropna()
+        # Uncomment to plot (for debugging)
+        # plot_debug(video_mag, video_smooth, markers=("Magnitude","Magnitude"), labels=["Video - magnitude", "Video - smoothed"])
+        # plot_debug(imu_mag, imu_smooth, markers=("Magnitude","Magnitude"), labels=["IMU - magnitude", "IMU - smoothed"])
 
-        # 7 - Normalize
-        NORM_METHOD = "zscore"
-        video_norm = normalize_signal(video_smooth, NORM_METHOD)
-        imu_norm = normalize_signal(imu_smooth, NORM_METHOD)
+        # 6 - Normalize
+        video_norm = normalize_signal(video_smooth)
+        imu_norm = normalize_signal(imu_smooth)
 
         # Uncomment to plot (for debugging)
         # plot_debug(video_norm, imu_norm,  markers=("Magnitude","Magnitude") , labels=["Video", "IMU"])
-        plot_debug(video_norm, video_data_resampled, markers=("Magnitude", f"{marker}y"), labels=["Video", "resampled"])
 
         # Cross-correlate
-        lag_samples, max_corr, similarity_curve = compute_cross_correlation(
-            imu_norm, video_norm, 30, LAG_RANGE
-        )
-        print(f"  Optimal lag (s): {lag_samples/30:.3f}, Correlation: {max_corr:.3f}")
+        lag_samples, max_corr, similarity_curve = compute_cross_correlation(imu_norm, video_norm, VIDEO_FREQ, LAG_RANGE)
+        print(f"Optimal lag (s): {lag_samples/VIDEO_FREQ:.3f}, Correlation: {max_corr:.3f}")
 
-        if SHOW_PLOTS or SAVE_PLOTS:
-            plot_similarity_vs_lag(similarity_curve, 30, LAG_RANGE, best_camera, OUTPUT_DIR, save=False)
+        # if SHOW_PLOTS or SAVE_PLOTS:
+        #     plot_similarity_vs_lag(similarity_curve, 30, LAG_RANGE, best_camera, OUTPUT_DIR, save=False)
 
-        # a = teager_kaiser_energy(video_norm)
-        # plot_debug(video_norm, a, "Magnitude", labels=["Video", "TKEO"])
+        # # a = teager_kaiser_energy(video_norm)
+        # # plot_debug(video_norm, a, "Magnitude", labels=["Video", "TKEO"])
 
         # plot_spectrograms(video_norm, fs=30)
-        # plot_aligned_signals(imu_norm, video_norm, lag_samples, COMMON_FREQ, camera_label, OUTPUT_DIR, save=SAVE_PLOTS)
+        # plot_aligned_signals(imu_norm, video_norm, -lag_samples, 30, best_camera, OUTPUT_DIR, save=SAVE_PLOTS)
 
-        # # Merge and save CSV
-        # if SAVE_CSV:
-        #   merge_and_save_csv(imu_rs, video_rs, lag_samples, COMMON_FREQ, camera_label, OUTPUT_DIR)
+        # # # Merge and save CSV
+        # # if SAVE_CSV:
+        # #   merge_and_save_csv(imu_rs, video_rs, lag_samples, COMMON_FREQ, camera_label, OUTPUT_DIR)
 
 def main():
     """
@@ -220,7 +194,6 @@ def main():
     print("-" * 100)
     print(f"All segments were sync in {time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time_all))}.")
     print("-" * 100)
-
 
 if __name__ == "__main__":
     main()
