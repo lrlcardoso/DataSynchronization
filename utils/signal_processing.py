@@ -85,8 +85,6 @@ def position_to_acceleration(df, x_col, y_col):
 
     return pd.DataFrame({time_col: df[time_col], acc_col: acc_mag})
 
-
-
 def compute_magnitude(df, time_col='Unix Time', mag_col='Magnitude'):
     """
     Compute vector magnitude using all columns except the time column.
@@ -103,7 +101,6 @@ def compute_magnitude(df, time_col='Unix Time', mag_col='Magnitude'):
     magnitude = np.linalg.norm(df[spatial_cols].values, axis=1)
     out = pd.DataFrame({time_col: df[time_col], mag_col: magnitude})
     return out
-
 
 def design_lowpass_filter(cutoff, fs, order):
     nyquist = 0.5 * fs
@@ -168,7 +165,6 @@ def highpass_filter(df, fs, cutoff, order):
 
     return filtered_df
 
-
 def lowpass_filter(df, fs, cutoff, order):
     """
     Apply low-pass Butterworth filter to valid (non-NaN) segments of the signal.
@@ -222,7 +218,6 @@ def lowpass_filter(df, fs, cutoff, order):
 
     return filtered_df
 
-
 def resample_signal(df, target_freq, fill_missing_with_nan):
     if df.empty:
         raise ValueError("Input DataFrame is empty.")
@@ -261,7 +256,6 @@ def resample_signal(df, target_freq, fill_missing_with_nan):
             resampled_dict[col] = np.interp(t_unix, df[time_col].values, df[col].values)
         return pd.DataFrame(resampled_dict)
     
-
 def align_signals(matrix1, matrix2, method='nearest'):
     df1 = pd.DataFrame(matrix1, columns=["Unix Time", "Magnitude"])
     df2 = pd.DataFrame(matrix2, columns=["Unix Time", "Magnitude"])
@@ -290,9 +284,6 @@ def align_signals(matrix1, matrix2, method='nearest'):
     aligned_matrix2 = pd.DataFrame(aligned2, columns=["Unix Time", "Magnitude"])
     return aligned_matrix2
 
-
-
-
 def normalize_signal(df, method="zscore", mag_col="Magnitude"):
     """
     Normalize the magnitude column of the signal DataFrame.
@@ -317,7 +308,6 @@ def normalize_signal(df, method="zscore", mag_col="Magnitude"):
     else:
         raise ValueError(f"Unknown normalization method: {method}")
     return out
-
 
 def compute_cross_correlation(imu_norm, video_norm, fs, lag_range, mag_col="Magnitude"):
     """
@@ -373,5 +363,3 @@ def compute_cross_correlation(imu_norm, video_norm, fs, lag_range, mag_col="Magn
     max_corr = valid_corr[max_idx]
 
     return lag_samples, max_corr, valid_corr
-
-

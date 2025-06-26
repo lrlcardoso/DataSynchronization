@@ -66,7 +66,6 @@ def get_videos_info(root_dir, patients, sessions, subfolders):
 
     return entries
 
-
 def load_imu_data(IMU_DATA_DIR, affected_side, seg_interval):
     """
     Loads IMU data (Unix Time, ax, ay, az) for the given wrist side and segment interval.

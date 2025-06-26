@@ -17,7 +17,7 @@ from natsort import natsorted
 
 # === Project Modules ===
 from config import (
-    TIME_MARGIN, LAG_RANGE, IMU_FREQ, VIDEO_FREQ,
+    LAG_RANGE, IMU_FREQ, VIDEO_FREQ,
     FILTER_LOW_CUT, FILTER_HIGH_CUT, FILTER_ORDER,
     ROOT_DIR, SELECTED_PATIENTS, SELECTED_SESSIONS,
     SELECTED_SUBFOLDERS, SELECTED_SEGMENTS, SHOW_PLOTS,
@@ -110,7 +110,7 @@ def run_sync(video_path, patient, session, affected_side):
         # Get UNIX start and end from first/last row
         seg_start = video_data.iloc[0]['Unix Time']
         seg_end = video_data.iloc[-1]['Unix Time']
-        seg_interval = (seg_start - TIME_MARGIN, seg_end + TIME_MARGIN)
+        seg_interval = (seg_start, seg_end)
         imu_path = os.path.abspath(os.path.join(os.path.dirname(video_path), "..", "WMORE"))
         imu_data = load_imu_data(imu_path, affected_side, seg_interval)
         imu_data['ax'] = -imu_data['ax']

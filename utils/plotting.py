@@ -36,7 +36,6 @@ def plot_similarity_vs_lag(similarity_curve, fs, lag_range, label, output_dir, s
         print(f"Saved similarity plot: {outpath}")
     plt.show()
 
-
 def plot_aligned_signals(imu_norm, video_norm, lag_samples, fs, label, output_dir, save=False):
     """
     Plot IMU and video normalized signals with the optimal lag applied to video timestamps.
@@ -67,7 +66,6 @@ def plot_aligned_signals(imu_norm, video_norm, lag_samples, fs, label, output_di
         plt.close()
     else:
         plt.show()
-
 
 def plot_debug(video_data_resampled, video_data_bandpass_filtered, markers, labels=None):
     """
@@ -111,7 +109,6 @@ def plot_debug(video_data_resampled, video_data_bandpass_filtered, markers, labe
     plt.grid(True)
     plt.tight_layout()
     plt.show()
-
 
 def plot_spectrograms(video_norm, fs=30):  # Set fs = your actual sampling rate
     """
