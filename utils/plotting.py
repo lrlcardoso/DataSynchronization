@@ -1,24 +1,56 @@
 """
 Plotting functions for lag similarity and aligned signals.
 """
-
-import numpy as np
-import matplotlib.pyplot as plt
 import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 from scipy.signal import spectrogram
 
-def plot_similarity_vs_lag(similarity_curve, fs, lag_range, label, output_dir, save=True):
-    """
-    Plots similarity (cross-correlation) curve as a function of lag (in seconds).
+def plot_and_save_magnitude(data1, data2, camera=None, output_dir="Plots/", save=False, show=False):
+    markers = ("Magnitude", "Magnitude")
+    
+    labels = ["Video", "IMU"]
+    label1 = labels[0] if len(labels) > 0 else "Signal 1"
+    label2 = labels[1] if len(labels) > 1 else "Signal 2"
 
-    Parameters:
-        similarity_curve (np.array): Cross-correlation values.
-        fs (float): Sampling frequency.
-        lag_range (float): Maximum lag (in seconds).
-        label (str): Identifier for the segment/camera.
-        output_dir (str): Directory to save the plot.
-        save (bool): Whether to save the plot as a PNG.
-    """
+    # Convert Unix Time to datetime for plotting
+    x1 = pd.to_datetime(data1["Unix Time"], unit='s')
+    x2 = pd.to_datetime(data2["Unix Time"], unit='s')
+
+    plt.figure(figsize=(12, 5))
+
+    # Plot first signal
+    plt.plot(
+        x1, data1[markers[0]],
+        label=label1, color='tab:orange', linewidth=1.5, alpha=0.8, marker='.', markersize=4
+    )
+
+    # Plot second signal
+    plt.plot(
+        x2, data2[markers[1]],
+        label=label2, color='tab:green', linewidth=2, linestyle='-', alpha=0.9, marker='.', markersize=4
+    )
+
+    # Labels and formatting
+    plt.xlabel("Timestamp")
+    plt.ylabel("Normalized Magnitude")
+    plt.title(f"{label1} vs {label2} ({camera})")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    if save:
+        os.makedirs(output_dir, exist_ok=True)
+        outpath = os.path.join(output_dir, f"Magnitude_Comparison_{camera}.png")
+        plt.savefig(outpath, dpi=200)
+        print(f"✅ Saved magnitude plot.")
+    
+    if show:
+        plt.show()
+
+def plot_and_save_similarity(similarity_curve, lag_range, label, output_dir="Plots/", save=False, show=False):
+
     n = len(similarity_curve)
     lags = np.linspace(-lag_range, lag_range, n)
 
@@ -29,12 +61,15 @@ def plot_similarity_vs_lag(similarity_curve, fs, lag_range, label, output_dir, s
     plt.title(f"Similarity Curve vs. Lag ({label})")
     plt.grid(True)
     plt.tight_layout()
+
     if save:
         os.makedirs(output_dir, exist_ok=True)
-        outpath = os.path.join(output_dir, f"{label}_similarity_vs_lag.png")
+        outpath = os.path.join(output_dir, f"Similarity_{label}.png")
         plt.savefig(outpath, dpi=200)
-        print(f"Saved similarity plot: {outpath}")
-    plt.show()
+        print(f"✅ Saved similarity plot.")
+    
+    if show:
+        plt.show()
 
 def plot_aligned_signals(imu_norm, video_norm, lag_samples, fs, label, output_dir, save=False):
     """

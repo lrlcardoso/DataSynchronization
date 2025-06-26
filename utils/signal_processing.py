@@ -7,6 +7,30 @@ import pandas as pd
 from scipy.signal import butter, filtfilt
 from scipy.signal import correlate
 
+def apply_lag(data, lag_samples, fs):
+
+    unix_col = data.columns[0]
+    seg_col = data.columns[1]
+    other_cols = data.columns[2:]
+
+    n_samples = len(data)
+    lag_sec = lag_samples / fs
+
+    # Apply lag to Unix Time only
+    start_unix = data[unix_col].iloc[0] - lag_sec
+    unix_time = np.floor((start_unix + np.arange(n_samples) / fs) * 1000) / 1000
+
+    # Build new DataFrame
+    data_lagged = pd.DataFrame({
+        unix_col: unix_time,
+        seg_col: data[seg_col].values
+    })
+
+    for col in other_cols:
+        data_lagged[col] = data[col].values
+
+    return data_lagged
+
 def smooth_signal(df, window=5, mag_col="Magnitude"):
     """
     Applies a moving average (rolling mean) to the magnitude column.
@@ -131,12 +155,12 @@ def highpass_filter(df, fs, cutoff, order):
     filtered_df = df.copy()
 
     for col in df.columns:
-        if col == "Unix Time":
+        if col in ("Unix Time", "Segment Time") or "_conf" in col:
             continue
 
         signal = df[col]
         if signal.isnull().all():
-            filtered_df[col] = signal
+            # print(f"Column '{col}' contains only NaN values and cannot be filtered.")
             continue
 
         # Initialize result with NaNs
@@ -185,12 +209,13 @@ def lowpass_filter(df, fs, cutoff, order):
     filtered_df = df.copy()
 
     for col in df.columns:
-        if col == "Unix Time":
+        if col in ("Unix Time", "Segment Time") or "_conf" in col:
             continue
 
         signal = df[col]
         if signal.isnull().all():
-            raise ValueError(f"Column '{col}' contains only NaN values and cannot be filtered.")
+            # print(f"Column '{col}' contains only NaN values and cannot be filtered.")
+            continue
         
         # Start with full NaN array
         filtered_signal = pd.Series(np.nan, index=signal.index)
@@ -223,17 +248,21 @@ def resample_signal(df, target_freq, fill_missing_with_nan):
         raise ValueError("Input DataFrame is empty.")
 
     time_col = "Unix Time"
-    signal_cols = [col for col in df.columns if col != time_col]
+    
+    # Identify numeric signal columns and non-numeric extra columns
+    signal_cols = [col for col in df.columns if col != time_col and df[col].dtype in [np.float64, np.float32, np.int64]]
+    extra_cols = [col for col in df.columns if col not in [time_col] + signal_cols]
 
+    # Time setup
     start_time = df[time_col].iloc[0]
     end_time = df[time_col].iloc[-1]
-    duration = end_time - start_time
+    n_samples = int(np.round((end_time - start_time) * target_freq)) + 1
 
-    t_new = np.arange(0, duration, 1 / target_freq)
-    t_unix = start_time + t_new  # Absolute Unix timestamps
+    t_new = np.arange(n_samples) / target_freq
+    t_unix = np.floor((start_time + t_new) * 1000) / 1000
 
     if fill_missing_with_nan:
-        # NaN-filling approach
+        # === NaN-filling for numeric signals ===
         resampled_array = np.full((len(t_new), len(signal_cols)), np.nan)
         index_map = np.round((df[time_col] - start_time) * target_freq).astype(int)
 
@@ -242,19 +271,41 @@ def resample_signal(df, target_freq, fill_missing_with_nan):
             for i, idx in enumerate(index_map):
                 if 0 <= idx < len(t_new):
                     val = signal[i]
-                    # Avoid setting 0 — treat it as a gap
                     resampled_array[idx, col_idx] = np.nan if val == 0 else val
 
+        # Create DataFrame with signal columns
         resampled_df = pd.DataFrame(resampled_array, columns=signal_cols)
+
+        # Insert Unix Time at column 0
         resampled_df.insert(0, time_col, t_unix)
+
+        # Insert each extra column right after Unix Time
+        for i, col in enumerate(extra_cols):
+            extra_values = [None] * len(t_unix)
+            for j, idx in enumerate(index_map):
+                if 0 <= idx < len(t_unix):
+                    extra_values[idx] = df[col].iloc[j]
+            resampled_df.insert(1 + i, col, extra_values)
+
         return resampled_df
 
     else:
-        # Interpolation approach
+        # === Interpolation for numeric signals ===
         resampled_dict = {time_col: t_unix}
         for col in signal_cols:
             resampled_dict[col] = np.interp(t_unix, df[time_col].values, df[col].values)
-        return pd.DataFrame(resampled_dict)
+
+        resampled_df = pd.DataFrame(resampled_dict)
+
+        # Insert extra columns after Unix Time
+        for i, col in enumerate(extra_cols):
+            nearest_idx = np.searchsorted(df[time_col].values, t_unix, side='left')
+            nearest_idx = np.clip(nearest_idx, 0, len(df) - 1)
+            values = df[col].values[nearest_idx]
+            resampled_df.insert(1 + i, col, values)
+
+        return resampled_df
+
     
 def align_signals(matrix1, matrix2, method='nearest'):
     df1 = pd.DataFrame(matrix1, columns=["Unix Time", "Magnitude"])

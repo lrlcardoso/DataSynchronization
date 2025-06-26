@@ -10,10 +10,10 @@ Version:        1.0
 """
 
 ROOT_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data"
-SELECTED_PATIENTS = ["P01"]
-SELECTED_SESSIONS = ["Session1"]
+SELECTED_PATIENTS = ["P02"]
+SELECTED_SESSIONS = ["Session3"]
 SELECTED_SUBFOLDERS = ["FMA_and_VR", "VR", "CT"]
-SELECTED_SEGMENTS = None
+SELECTED_SEGMENTS = [2]
 
 IMU_FREQ = 100               # Hz
 VIDEO_FREQ = 30              # Hz
@@ -21,13 +21,13 @@ FILTER_LOW_CUT = 0.5         # Hz
 FILTER_HIGH_CUT = 1.0        # Hz
 FILTER_ORDER = 2
 LAG_RANGE = 5                # seconds, search +/- this window
-WINDOW_SIZE = 2*VIDEO_FREQ   # seconds of window size for final smooth
+WINDOW_SIZE = 3*VIDEO_FREQ   # seconds of window size for final smooth
 
 # --- Plotting ---
 SHOW_PLOTS = True
+SHOW_DEBG_PLOTS = False
+
+# --- Saving ---
+OUTPUT_DIR = "ReadyToAnalyse"
 SAVE_PLOTS = False
-
-# --- CSV Output ---
-OUTPUT_DIR = "results/"
-SAVE_CSV = True
-
+SAVE_CSV = False
