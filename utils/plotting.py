@@ -49,6 +49,8 @@ def plot_and_save_magnitude(data1, data2, camera=None, output_dir="Plots/", save
     if show:
         plt.show()
 
+    plt.close()
+
 def plot_and_save_similarity(similarity_curve, lag_range, label, output_dir="Plots/", save=False, show=False):
 
     n = len(similarity_curve)
@@ -71,36 +73,7 @@ def plot_and_save_similarity(similarity_curve, lag_range, label, output_dir="Plo
     if show:
         plt.show()
 
-def plot_aligned_signals(imu_norm, video_norm, lag_samples, fs, label, output_dir, save=False):
-    """
-    Plot IMU and video normalized signals with the optimal lag applied to video timestamps.
-    """
-    # Shift video time by lag (in seconds)
-    shift_seconds = lag_samples / fs
-    shifted_video = video_norm.copy()
-    shifted_video['Unix Time'] += shift_seconds
-
-    # Relative time axes
-    imu_time = imu_norm['Unix Time'] - imu_norm['Unix Time'].iloc[0]
-    video_time = shifted_video['Unix Time'] - imu_norm['Unix Time'].iloc[0]  # align to IMU start
-
-    plt.figure(figsize=(12, 5))
-    plt.plot(imu_time, imu_norm['Magnitude'], label="IMU", alpha=0.8)
-    plt.plot(video_time, shifted_video['Magnitude'], label=f"Video (shifted by {shift_seconds:.3f} s)", alpha=0.8)
-    plt.xlabel("Segment Time (s)")
-    plt.ylabel("Normalized Magnitude")
-    plt.title(f"Aligned Signals - {label}")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-
-    if save:
-        os.makedirs(output_dir, exist_ok=True)
-        out_path = os.path.join(output_dir, f"{label}_aligned_signals.png")
-        plt.savefig(out_path)
-        plt.close()
-    else:
-        plt.show()
+    plt.close()
 
 def plot_debug(video_data_resampled, video_data_bandpass_filtered, markers, labels=None):
     """
@@ -144,6 +117,8 @@ def plot_debug(video_data_resampled, video_data_bandpass_filtered, markers, labe
     plt.grid(True)
     plt.tight_layout()
     plt.show()
+
+    plt.close()
 
 def plot_spectrograms(video_norm, fs=30):  # Set fs = your actual sampling rate
     """

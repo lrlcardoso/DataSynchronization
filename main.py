@@ -11,10 +11,13 @@ Version:        1.1
 """
 import os
 import time
+import openpyxl
 import pandas as pd
 from natsort import natsorted
+from openpyxl import load_workbook, Workbook
+from collections import defaultdict
 
-import numpy as np
+sync_results = defaultdict(lambda: defaultdict(dict))  # {session: {segment: {"lag": ..., "corr": ...}}}
 
 # === Project Modules ===
 from config import (
@@ -206,7 +209,12 @@ def run_sync(video_path, patient, session, affected_side):
         # 7 - Cross-correlate
         lag_samples, max_corr, similarity_curve = compute_cross_correlation(imu_norm, video_norm, VIDEO_FREQ, LAG_RANGE)
         print(f"Optimal lag (s): {lag_samples/VIDEO_FREQ:.3f}, Correlation: {max_corr:.3f}")
-        # TODO: save in a consolidated table, the correlation and the lag for each segment
+        
+        # Save to in-memory results dict
+        sync_results[session][seg_name] = {
+            "lag": round(lag_samples / VIDEO_FREQ, 3),
+            "corr": round(max_corr, 3)
+        }
 
         # save plot similarity_curve
         plot_and_save_similarity(similarity_curve, LAG_RANGE, best_camera, output_dir=plots_dir, save=SAVE_PLOTS, show=SHOW_PLOTS)
@@ -342,6 +350,54 @@ def main():
     print("-" * 100)
     print(f"All segments were sync in {time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time_all))}.")
     print("-" * 100)
+
+    excel_out_path = os.path.join("SyncSummary.xlsx")
+
+    # Load existing workbook if it exists, otherwise create new
+    if os.path.exists(excel_out_path):
+        wb = load_workbook(excel_out_path)
+    else:
+        wb = Workbook()
+
+    SESSION_COLUMN_MAP = {
+        "Session1": 1,  # A
+        "Session2": 4,  # D
+        "Session3": 7,  # G
+    }
+
+    for patient in SELECTED_PATIENTS:
+        if patient in wb.sheetnames:
+            ws = wb[patient]
+        else:
+            ws = wb.create_sheet(title=patient)
+
+        for session in sync_results:
+            session_prefix = session.split("_")[0]  # e.g., "Session1" from "Session1_20250305"
+
+            if session_prefix not in SESSION_COLUMN_MAP:
+                print(f"⚠️ Unknown session prefix '{session_prefix}' — skipping.")
+                continue
+
+            col_base = SESSION_COLUMN_MAP[session_prefix]
+
+            ws.cell(row=2, column=col_base, value=session)
+            ws.cell(row=3, column=col_base, value="Segment")
+            ws.cell(row=3, column=col_base + 1, value="Lag")
+            ws.cell(row=3, column=col_base + 2, value="Correlation")
+
+            row = 4
+            for segment, values in sync_results[session].items():
+                ws.cell(row=row, column=col_base, value=segment)
+                ws.cell(row=row, column=col_base + 1, value=values["lag"])
+                ws.cell(row=row, column=col_base + 2, value=values["corr"])
+                row += 1
+
+    # Remove default sheet if empty
+    if "Sheet" in wb.sheetnames and len(wb.sheetnames) > 1:
+        del wb["Sheet"]
+
+    wb.save(excel_out_path)
+    print(f"Saved Excel summary to {excel_out_path}")
 
 if __name__ == "__main__":
     main()
