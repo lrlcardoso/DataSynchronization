@@ -1,5 +1,33 @@
 """
-Signal processing utilities: resampling, normalization, correlation.
+==============================================================================
+Title:          Signal Processing Utilities
+Description:    Provides functions for filtering, normalization, correlation, 
+                resampling, signal alignment, acceleration estimation, and 
+                energy transformation used in synchronizing IMU and video data.
+Author:         Lucas R. L. Cardoso
+Project:        VRRehab_UQ-MyTurn
+Date:           2025-04-25
+Version:        1.0
+==============================================================================
+Usage:
+    from utils.signal_processing import (
+        resample_signal, normalize_signal, compute_cross_correlation,
+        compute_magnitude, align_signals, position_to_acceleration,
+        highpass_filter, lowpass_filter, smooth_signal, teager_kaiser_energy,
+        apply_lag
+    )
+
+Dependencies:
+    - Python >= 3.x
+    - Required libraries: numpy, pandas, scipy
+
+Notes:
+    - All filters handle non-continuous (NaN-separated) signal segments robustly.
+    - Acceleration is derived from position using second-order gradient.
+
+Changelog:
+    - v1.0: [2025-04-25] Initial release
+==============================================================================
 """
 
 import numpy as np

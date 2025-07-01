@@ -1,6 +1,35 @@
 """
-Plotting functions for lag similarity and aligned signals.
+==============================================================================
+Title:          Synchronization Plotting Utilities
+Description:    Plotting functions for visualizing signal magnitude alignment, 
+                lag similarity, spectrograms, and debug comparisons between 
+                resampled and filtered data.
+Author:         Lucas R. L. Cardoso
+Project:        VRRehab_UQ-MyTurn
+Date:           2025-04-25
+Version:        1.0
+==============================================================================
+Usage:
+    from utils.plotting import (
+        plot_and_save_magnitude,
+        plot_and_save_similarity,
+        plot_debug,
+        plot_spectrograms
+    )
+
+Dependencies:
+    - Python >= 3.x
+    - Required libraries: os, numpy, pandas, matplotlib, scipy
+
+Notes:
+    - All plotting functions optionally support `save` and `show` arguments.
+    - Output plots are stored under the specified directory, default is ./Plots/.
+
+Changelog:
+    - v1.0: [2025-04-25] Initial release
+==============================================================================
 """
+
 import os
 import numpy as np
 import pandas as pd

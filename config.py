@@ -1,11 +1,28 @@
 """
 ==============================================================================
 Title:          Signal Synchronization Config
-Description:    Stores global configuration for synchronization pipeline
+Description:    Stores global configuration variables for the signal-video 
+                synchronization pipeline, including patient/session filters, 
+                signal filtering parameters, and plotting/saving options.
 Author:         Lucas R. L. Cardoso
 Project:        VRRehab_UQ-MyTurn
 Date:           2025-04-25
-Version:        1.0
+Version:        1.1
+==============================================================================
+Usage:
+    This file is intended to be imported into synchronization-related scripts 
+    (e.g., main_sync.py, sync_utils.py) to access global configuration options.
+
+Dependencies:
+    - Python >= 3.x
+
+Notes:
+    - Edit SELECTED_PATIENTS, SESSIONS, or SEGMENTS to restrict processing scope.
+    - Use SHOW_PLOTS and SAVE_PLOTS to control debug visualization behavior.
+
+Changelog:
+    - v1.0: [2025-04-25] Initial release
+    - v1.1: [2025-06-27] Organized necessary variables
 ==============================================================================
 """
 

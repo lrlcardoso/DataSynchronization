@@ -2,13 +2,36 @@
 ==============================================================================
 Title:          Signal Synchronization Pipeline (Folder-Based)
 Description:    Aligns and synchronizes IMU and video marker data for all
-                segment folders found inside the input directory.
+                segment folders found inside the input directory. Selects
+                optimal camera per segment and saves aligned CSVs and plots.
 Author:         Lucas R. L. Cardoso
 Project:        VRRehab_UQ-MyTurn
 Date:           2025-04-25
 Version:        1.1
 ==============================================================================
+Usage:
+    python main_sync.py
+
+Dependencies:
+    - Python >= 3.x
+    - Required libraries: os, time, pandas, openpyxl, natsort
+    - Local modules: config, utils (file_utils, signal_processing, plotting)
+
+Notes:
+    - The script processes all selected patients/sessions/segments defined in 
+      `config.py`.
+    - Each segment is processed independently, with optimal camera selected 
+      based on marker visibility.
+    - Results include lag/correlation values and resynchronized CSVs and plots.
+
+Changelog:
+    - v1.0: [2025-04-25] Initial implementation of folder-based synchronization.
+    - v1.1: [2025-07-27] Added support for arbitrary patient/session/camera/segment
+                         combinations. Also added saving of output CSVs and plots
+                         for both cameras and all IMU loggers.
+==============================================================================
 """
+
 import os
 import time
 import openpyxl

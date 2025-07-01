@@ -1,5 +1,29 @@
 """
-File IO utilities for reading segmentation, IMU, and video marker data.
+==============================================================================
+Title:          File IO Utilities
+Description:    Provides helper functions for retrieving video session info 
+                and loading IMU data for a given segment based on the affected side.
+Author:         Lucas R. L. Cardoso
+Project:        VRRehab_UQ-MyTurn
+Date:           2025-04-25
+Version:        1.0
+==============================================================================
+Usage:
+    from utils.file_utils import get_videos_info, load_imu_data
+
+Dependencies:
+    - Python >= 3.x
+    - Required libraries: os, pandas
+
+Notes:
+    - Assumes patient side information is stored in a tab-delimited file:
+        ROOT_DIR/Processed/side_info.txt
+    - IMU logger files (Logger1.csv, Logger2.csv) must exist in the WMORE folder 
+      one level above the session's video folder.
+
+Changelog:
+    - v1.0: [2025-04-25] Initial release
+==============================================================================
 """
 
 import os
