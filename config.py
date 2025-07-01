@@ -27,8 +27,8 @@ Changelog:
 """
 
 ROOT_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data"
-SELECTED_PATIENTS = ["P06"]
-SELECTED_SESSIONS = ["Session2"]
+SELECTED_PATIENTS = ["P10"]
+SELECTED_SESSIONS = ["Session1","Session2","Session3"]
 SELECTED_SUBFOLDERS = ["FMA_and_VR", "VR", "CT"]
 SELECTED_SEGMENTS = None
 
