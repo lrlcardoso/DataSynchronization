@@ -19,6 +19,8 @@ Dependencies:
 Notes:
     - Edit SELECTED_PATIENTS, SESSIONS, or SEGMENTS to restrict processing scope.
     - Use SHOW_PLOTS and SAVE_PLOTS to control debug visualization behavior.
+    - If using an external venv. that runs for the entire project, run:
+      & 'C:\\Users\\s4659771\\Documents\\MyTurn_Project\\.venv\\Scripts\\Activate.ps1'
 
 Changelog:
     - v1.0: [2025-04-25] Initial release
@@ -27,10 +29,10 @@ Changelog:
 """
 
 ROOT_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data"
-SELECTED_PATIENTS = ["P10"]
-SELECTED_SESSIONS = ["Session1","Session2","Session3"]
+SELECTED_PATIENTS = ["P02"]
+SELECTED_SESSIONS = ["Session1"]
 SELECTED_SUBFOLDERS = ["FMA_and_VR", "VR", "CT"]
-SELECTED_SEGMENTS = None
+SELECTED_SEGMENTS = [15]
 
 IMU_FREQ = 100               # Hz
 VIDEO_FREQ = 30              # Hz

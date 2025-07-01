@@ -55,11 +55,13 @@ All main settings (paths, sample rates, etc.) can be configured in `config.py`.
 - pandas
 - scipy
 - matplotlib
+- natsort
+- openpyxl
 
 Install requirements (if needed):
 
 ```bash
-pip install numpy pandas scipy matplotlib
+python -m pip install -r requirements.txt
 ```
 
 ---
