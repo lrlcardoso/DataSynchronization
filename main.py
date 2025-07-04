@@ -172,6 +172,7 @@ def run_sync(video_path, patient, session, affected_side):
         # 1 - Load all necessary data and info
         # Video data
         video_data = best_df[['Unix Time', f"{marker}x", f"{marker}y"]].copy()
+        video_data['Unix Time'] = video_data['Unix Time']
         video_data[f"{marker}y"] = -video_data[f"{marker}y"]
         # IMU data
         # Get UNIX start and end from first/last row
@@ -217,6 +218,8 @@ def run_sync(video_path, patient, session, affected_side):
         # 5 - Smooth signals
         video_smooth = smooth_signal(video_mag, window=WINDOW_SIZE)
         imu_smooth = smooth_signal(imu_rs, window=WINDOW_SIZE)
+        # video_smooth = video_mag
+        # imu_smooth = imu_rs
         
         if SHOW_DEBG_PLOTS:
             plot_debug(video_mag, video_smooth, markers=("Magnitude","Magnitude"), labels=["Video - magnitude", "Video - smoothed"])
@@ -351,6 +354,8 @@ def run_sync(video_path, patient, session, affected_side):
 
             video_data_saved_smooth = smooth_signal(video_data_saved_mag, window=WINDOW_SIZE)
             imu_data_saved_smooth = smooth_signal(imu_data_saved_rs, window=WINDOW_SIZE)
+            # video_data_saved_smooth = video_data_saved_mag
+            # imu_data_saved_smooth = imu_data_saved_rs
             
             video_data_norm = normalize_signal(video_data_saved_smooth)
             imu_data_saved_norm = normalize_signal(imu_data_saved_smooth)

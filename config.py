@@ -29,10 +29,10 @@ Changelog:
 """
 
 ROOT_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data"
-SELECTED_PATIENTS = ["P02"]
-SELECTED_SESSIONS = ["Session1"]
+SELECTED_PATIENTS = ["P10"]
+SELECTED_SESSIONS = ["Session3"]
 SELECTED_SUBFOLDERS = ["FMA_and_VR", "VR", "CT"]
-SELECTED_SEGMENTS = [15]
+SELECTED_SEGMENTS = [1]
 
 IMU_FREQ = 100               # Hz
 VIDEO_FREQ = 30              # Hz
@@ -44,7 +44,7 @@ WINDOW_SIZE = 3*VIDEO_FREQ   # seconds of window size for final smooth
 
 # --- Plotting ---
 SHOW_PLOTS = False
-SHOW_DEBG_PLOTS = False
+SHOW_DEBG_PLOTS = True
 
 # --- Saving ---
 OUTPUT_DIR = "ReadyToAnalyse"

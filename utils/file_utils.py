@@ -121,7 +121,6 @@ def load_imu_data(IMU_DATA_DIR, affected_side, seg_interval):
     
     # Filter by segment interval (as close as possible)
     start, end = seg_interval
-    print(seg_interval)
     df_filtered = df[(df['Unix Time'] >= start) & (df['Unix Time'] <= end)].copy()
     
     # Select relevant columns
