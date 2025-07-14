@@ -156,7 +156,7 @@ def run_sync(video_path, patient, session, affected_side):
             patient,
             session,
             seg_name,
-            "Plots"
+            "Plots/Synchronization"
         )
         os.makedirs(plots_dir, exist_ok=True)
 
@@ -183,6 +183,9 @@ def run_sync(video_path, patient, session, affected_side):
         imu_data = load_imu_data(imu_path, affected_side, seg_interval)
         imu_data['ax'] = -imu_data['ax']
 
+        if imu_data.empty:
+            continue
+
         # 2 - Preprocessing
         # Resample video_data to make sure there is no gaps. Also add 0 to every gap to facilitate visualization
         video_data_resampled = resample_signal(video_data, target_freq=VIDEO_FREQ, fill_missing_with_nan=True)
@@ -206,7 +209,7 @@ def run_sync(video_path, patient, session, affected_side):
             plot_debug(imu_data_resampled, imu_data_lowpass_filtered, markers=("ax","ax"), labels=["IMU - resampled", "IMU - filtered"])
 
         # Apply a highpass filter to remove gravity
-        imu_data_bandpass_filtered = highpass_filter(imu_data_lowpass_filtered, fs=IMU_FREQ, cutoff=FILTER_HIGH_CUT, order=FILTER_ORDER)
+        imu_data_bandpass_filtered = highpass_filter(imu_data_lowpass_filtered, fs=IMU_FREQ, cutoff=FILTER_LOW_CUT, order=FILTER_ORDER)
 
         # 3 - Compute magnitudes
         video_mag = position_to_acceleration(video_data_bandpass_filtered, f"{marker}x", f"{marker}y")
@@ -241,7 +244,7 @@ def run_sync(video_path, patient, session, affected_side):
             "lag": round(lag_samples / VIDEO_FREQ, 3),
             "corr": round(max_corr, 3)
         }
-
+        
         # save plot similarity_curve
         plot_and_save_similarity(similarity_curve, LAG_RANGE, best_camera, output_dir=plots_dir, save=SAVE_PLOTS, show=SHOW_PLOTS)
         
@@ -295,7 +298,6 @@ def run_sync(video_path, patient, session, affected_side):
             df = pd.read_csv(file_path)
 
             # Filter by segment interval
-            global_start, global_end = seg_interval
             data_segmented = df[(df['Unix Time'] >= global_start) & (df['Unix Time'] <= global_end)].reset_index(drop=True)
 
             data_segmented_resampled = resample_signal(data_segmented, target_freq=IMU_FREQ, fill_missing_with_nan=True)
@@ -345,7 +347,7 @@ def run_sync(video_path, patient, session, affected_side):
             imu_data_saved_lowpass_filtered = lowpass_filter(imu_data_saved, fs=IMU_FREQ, cutoff=FILTER_HIGH_CUT, order=FILTER_ORDER)
             
             video_data_saved_bandpass_filtered = highpass_filter(video_data_saved_lowpass_filtered, fs=VIDEO_FREQ, cutoff=FILTER_LOW_CUT, order=FILTER_ORDER)
-            imu_data_saved_bandpass_filtered = highpass_filter(imu_data_saved_lowpass_filtered, fs=IMU_FREQ, cutoff=FILTER_HIGH_CUT, order=FILTER_ORDER)
+            imu_data_saved_bandpass_filtered = highpass_filter(imu_data_saved_lowpass_filtered, fs=IMU_FREQ, cutoff=FILTER_LOW_CUT, order=FILTER_ORDER)
 
             video_data_saved_mag = position_to_acceleration(video_data_saved_bandpass_filtered, f"{marker}x", f"{marker}y")
             imu_data_saved_mag = compute_magnitude(imu_data_saved_bandpass_filtered)

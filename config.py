@@ -29,10 +29,10 @@ Changelog:
 """
 
 ROOT_DIR = r"C:\Users\s4659771\Documents\MyTurn_Project\Data"
-SELECTED_PATIENTS = ["P06"]
-SELECTED_SESSIONS = ["Session2"]
+SELECTED_PATIENTS = ["P01"]
+SELECTED_SESSIONS = ["Session1"]
 SELECTED_SUBFOLDERS = ["FMA_and_VR", "VR", "CT"]
-SELECTED_SEGMENTS = [1]
+SELECTED_SEGMENTS = [4]
 
 IMU_FREQ = 100               # Hz
 VIDEO_FREQ = 30              # Hz

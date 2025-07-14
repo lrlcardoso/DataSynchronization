@@ -290,24 +290,47 @@ def resample_signal(df, target_freq, fill_missing_with_nan):
     t_unix = np.floor((start_time + t_new) * 1000) / 1000
 
     if fill_missing_with_nan:
-        # === NaN-filling for numeric signals ===
+        # === NaN-filling only when all three signal components are zero ===
         resampled_array = np.full((len(t_new), len(signal_cols)), np.nan)
         index_map = np.round((df[time_col] - start_time) * target_freq).astype(int)
 
-        for col_idx, col in enumerate(signal_cols):
-            signal = df[col].values
-            for i, idx in enumerate(index_map):
-                if 0 <= idx < len(t_new):
-                    val = signal[i]
-                    resampled_array[idx, col_idx] = np.nan if val == 0 else val
+        signals = df[signal_cols].values  # shape: (n_samples, 3)
+
+        for i, idx in enumerate(index_map):
+            if 0 <= idx < len(t_new):
+                row_vals = signals[i, :]
+                if np.all(row_vals == 0):
+                    resampled_array[idx, :] = np.nan
+                else:
+                    resampled_array[idx, :] = row_vals
 
         # Create DataFrame with signal columns
         resampled_df = pd.DataFrame(resampled_array, columns=signal_cols)
 
+        # Interpolate only gaps <= 100 ms (10 samples at 100 Hz)
+        max_gap_len = int(0.1 * target_freq)  # 100 ms
+        for col in signal_cols:
+            col_data = resampled_df[col]
+
+            # Identify NaN runs
+            isnan_mask = col_data.isna()
+            gap_groups = (isnan_mask != isnan_mask.shift()).cumsum()
+            gap_lengths = isnan_mask.groupby(gap_groups).sum()
+
+            # Mask for short gaps only
+            short_gaps = gap_lengths[gap_lengths <= max_gap_len].index
+            fill_mask = gap_groups.isin(short_gaps) & isnan_mask
+
+            # Interpolate across short gaps only
+            interpolated = col_data.copy()
+            interpolated[~fill_mask] = col_data[~fill_mask]  # Keep values as is
+            interpolated = interpolated.interpolate(limit=max_gap_len, limit_area='inside')
+            resampled_df[col] = interpolated
+
         # Insert Unix Time at column 0
         resampled_df.insert(0, time_col, t_unix)
 
-        # Insert each extra column right after Unix Time
+        # Insert extra columns after Unix Time
         for i, col in enumerate(extra_cols):
             extra_values = [None] * len(t_unix)
             for j, idx in enumerate(index_map):
@@ -316,6 +339,7 @@ def resample_signal(df, target_freq, fill_missing_with_nan):
             resampled_df.insert(1 + i, col, extra_values)
 
         return resampled_df
+
 
     else:
         # === Interpolation for numeric signals ===
