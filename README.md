@@ -1,71 +1,98 @@
-# Signal Synchronization and Alignment Pipeline
+# RehabTrack_Workflow – Data Synchronization
 
-This project synchronizes and aligns wrist acceleration signals from two different sources:
-
-- **IMU logger (WMORE):** High-frequency accelerometer data (e.g., 100 Hz).
-- **Video-derived marker:** Wrist marker acceleration extracted from video frames (e.g., 30 Hz).
-
-The pipeline identifies the optimal time shift to align both signals using cross-correlation, then merges and saves the synchronized data for further analysis.
+This is part of the [RehabTrack_Workflow](https://github.com/lrlcardoso/RehabTrack_Workflow): a modular Python pipeline for **tracking and analysing physiotherapy movements**, using video and IMU data.  
+This module synchronizes and aligns wrist acceleration signals derived from IMU loggers and video-based markers, producing time‑aligned datasets for further analysis.
 
 ---
 
-## Project Structure
+## 📌 Overview
 
-your_project/
-│
-├── main.py
-├── config.py
-├── README.md
-└── Utils/
-    ├── __init__.py
-    ├── file_io.py
-    ├── signal_processing.py
-    ├── plotting.py
-    └── data_merge.py
+This module performs:
+- **Segmentation-based processing** using a user‑defined file of target intervals
+- **Signal loading** from IMU CSVs and video‑derived wrist markers
+- **Resampling** to match sampling rates
+- **Signal normalization** for cross‑source comparison
+- **Cross‑correlation** to determine optimal time shift (lag)
+- **Alignment** of IMU and video signals
+- **Merging** into a single synchronized dataset with both global and segment-relative time
+- **Saving** results in CSV format for later stages
+
+**Inputs:**
+- IMU logger acceleration data (e.g., WMORE output)
+- Video‑derived wrist marker acceleration data
+- Segmentation file specifying the intervals to synchronize (same as used in VideoDataProcessing)
+
+**Outputs:**
+- Synchronized CSV file containing IMU and video marker signals for each segment
+- Figures showing lag correlation and aligned signals
 
 ---
 
-## Usage
+## 📂 Repository Structure
 
+```
+Data_Synchronization/
+├── main.py                   # Main entry point
+├── config.py                 # Configurable parameters & paths
+├── utils/                    # Helper modules for file I/O, processing, and plotting
+│   ├── file_utils.py         # File reading/writing utilities
+│   ├── signal_processing.py  # Signal resampling, normalization, and cross-correlation
+│   └── plotting.py           # Plot generation for correlation and alignment
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## 🛠 Installation
+
+```bash
+git clone https://github.com/yourusername/Data_Synchronization.git
+cd Data_Synchronization
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+---
+
+## 🚀 Usage
+
+Run the synchronization pipeline:
 ```bash
 python main.py
 ```
 
-All main settings (paths, sample rates, etc.) can be configured in `config.py`.
+All main settings (paths, sample rates, etc.) are configured in `config.py`.
+
+**Inputs:**  
+- IMU logger CSVs with wrist acceleration data  
+- Video marker CSVs with wrist acceleration data  
+- Segmentation file listing intervals for synchronization  
+
+**Outputs:**  
+- CSV files containing synchronized IMU and video marker data for each segment  
+- Plots showing lag vs. correlation and the aligned signals  
 
 ---
 
-## Pipeline Steps
+## 📖 Citation
 
-1. Read the segmentation file to extract all intervals.
-2. Load IMU and video marker data for each segment, with ±1 second margin.
-3. Identify the correct wrist logger (left/right).
-4. Resample both signals to the same frequency.
-5. Normalize both signals.
-6. Compute cross-correlation and find the optimal lag.
-7. Plot similarity vs. lag and the aligned signals.
-8. Save a CSV with synchronized IMU and video marker data, including global UNIX time and segment-relative time.
-
----
-
-## Requirements
-
-- Python >= 3.7
-- numpy
-- pandas
-- scipy
-- matplotlib
-- natsort
-- openpyxl
-
-Install requirements (if needed):
-
-```bash
-python -m pip install -r requirements.txt
+If you use this module in your research, please cite:
+```
+Cardoso, L. R. L. (2025). RehabTrack_Workflow. 
+GitHub. https://doi.org/XXXX/zenodo.XXXXX
 ```
 
 ---
 
-## Author
+## 📝 License
 
-Lucas R. L. Cardoso
+Code: [MIT License](LICENSE)  
+Documentation & figures: [CC BY 4.0](LICENSE-docs)
+
+---
+
+## 🤝 Acknowledgments
+
+- numpy, pandas, scipy, matplotlib, natsort, openpyxl
