@@ -1,6 +1,6 @@
-# RehabTrack_Workflow – Data Synchronization
+# RehabTrack Workflow – Data Synchronization
 
-This is part of the [RehabTrack_Workflow](https://github.com/lrlcardoso/RehabTrack_Workflow): a modular Python pipeline for **tracking and analysing physiotherapy movements**, using video and IMU data.  
+This is part of the [RehabTrack Workflow](https://github.com/lrlcardoso/RehabTrack_Workflow): a modular Python pipeline for **tracking and analysing physiotherapy movements**, using video and IMU data.  
 This module synchronizes and aligns wrist acceleration signals derived from IMU loggers and video-based markers, producing time‑aligned datasets for further analysis.
 
 ---
@@ -90,9 +90,3 @@ GitHub. https://doi.org/XXXX/zenodo.XXXXX
 
 Code: [MIT License](LICENSE)  
 Documentation & figures: [CC BY 4.0](LICENSE-docs)
-
----
-
-## 🤝 Acknowledgments
-
-- numpy, pandas, scipy, matplotlib, natsort, openpyxl
